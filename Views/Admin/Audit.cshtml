@@ -1,0 +1,103 @@
+@using CinemaApp.Models
+@model List<AdminAuditLog>
+@{
+    ViewData["Title"] = "Nhật ký thao tác";
+    ViewData["Dark"] = true;
+    int pg = ViewBag.Page;
+    int pgs = ViewBag.Pages;
+    int total = ViewBag.Total;
+
+    string ActionText(string a) => a switch
+    {
+        "Approve" => "Duyệt thanh toán",
+        "Revive" => "Duyệt lại đơn hết hạn",
+        "Refund" => "Hoàn tiền",
+        "Reject" => "Hủy đơn",
+        "VoucherCreate" => "Tạo mã giảm giá",
+        "VoucherDelete" => "Xóa mã giảm giá",
+        "VoucherToggle" => "Bật / tắt mã giảm giá",
+        "MovieCreate" => "Thêm phim",
+        "MovieEdit" => "Sửa phim",
+        "MovieDelete" => "Xóa phim",
+        "ShowtimeCreate" => "Tạo suất chiếu",
+        "ShowtimePrice" => "Đổi giá suất chiếu",
+        "ShowtimeDelete" => "Xóa suất chiếu",
+        "ShowtimeDeleteMany" => "Dọn lịch chiếu hàng loạt",
+        "CinemaCreate" => "Thêm rạp", "CinemaEdit" => "Sửa rạp", "CinemaDelete" => "Xóa rạp", "RoomCreate" => "Thêm phòng chiếu", "RoomEdit" => "Sửa phòng chiếu", "RoomLayout" => "Tạo lại sơ đồ ghế", "RoomDelete" => "Xóa phòng chiếu", "ProductCreate" => "Thêm sản phẩm bắp nước", "ProductEdit" => "Sửa sản phẩm bắp nước", "ProductToggle" => "Ẩn / bán lại sản phẩm", "ProductDelete" => "Xóa sản phẩm bắp nước", "RevenueExport" => "Xuất báo cáo doanh thu", "StaffSave" => "Thêm / đổi rạp nhân viên",
+        "StaffRemove" => "Gỡ quyền nhân viên",
+        "CashUnblock" => "Mở khóa trả tiền mặt",
+        "CashBlock" => "Khóa trả tiền mặt",
+        "TwoFactorOn" => "Bật xác thực 2 lớp",
+        "TwoFactorOff" => "Tắt xác thực 2 lớp",
+        _ => a
+    };
+}
+
+<style>
+    .adlog-head{margin:0 0 20px}
+    .adlog-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .adlog-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .adlog-head p{margin:0;color:var(--a-mute);font-size:14px}
+    .adlog-count{margin:0 0 12px;color:var(--a-mute);font-size:13px}
+    .adlog-count b{color:var(--a-text)}
+    .adlog-card{display:block;width:100%;max-width:none;box-sizing:border-box;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;overflow:hidden}
+    .adlog-wrap{overflow-x:auto}
+    .adlog-table{width:100%;min-width:900px;border-collapse:collapse;font-size:14px}
+    .adlog-table th{text-align:left;font-size:11px;letter-spacing:1px;color:var(--a-mute);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--a-line);background:rgba(0,0,0,.2);white-space:nowrap}
+    .adlog-table td{padding:13px 14px;border-bottom:1px solid var(--a-line);color:var(--a-text);vertical-align:top}
+    .adlog-table tr:last-child td{border-bottom:0}
+    .adlog-nw{white-space:nowrap}
+    .adlog-mut{color:var(--a-mute)}
+    .adlog-act{font-weight:700;color:var(--a-gold2);white-space:nowrap}
+    .adlog-empty{padding:48px 16px;text-align:center;color:var(--a-mute);font-size:14px}
+    .adlog-pager{display:flex;gap:14px;align-items:center;justify-content:center;margin:18px 0 4px;color:var(--a-mute);font-size:13px}
+    .adlog-pager a,.adlog-pager span.dis{padding:7px 16px;border-radius:999px;border:1px solid var(--a-line);background:var(--a-bg2);color:var(--a-gold);text-decoration:none;font-weight:600}
+    .adlog-pager a:hover{border-color:var(--a-gold)}
+    .adlog-pager span.dis{opacity:.4;color:var(--a-mute)}
+</style>
+
+<div class="adlog-head">
+    <div class="eb">QUẢN TRỊ</div>
+    <h1>Nhật ký thao tác</h1>
+    <p>Mọi thao tác nhạy cảm của quản trị viên (duyệt, hoàn tiền, hủy đơn, mã giảm giá) đều được ghi lại tại đây để đối soát.</p>
+</div>
+
+<p class="adlog-count">Tổng cộng <b>@total</b> thao tác, trang <b>@pg</b> / @pgs (mỗi trang 50 dòng, mới nhất trước)</p>
+
+<div class="adlog-card">
+    @if (Model.Count == 0)
+    {
+        <div class="adlog-empty">Chưa có thao tác nào được ghi lại.</div>
+    }
+    else
+    {
+        <div class="adlog-wrap">
+            <table class="adlog-table">
+                <thead>
+                    <tr><th>GIỜ</th><th>QUẢN TRỊ VIÊN</th><th>THAO TÁC</th><th>ĐỐI TƯỢNG</th><th>CHI TIẾT</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        <tr>
+                            <td class="adlog-nw">@r.At.AddHours(7).ToString("HH:mm:ss dd/MM/yyyy")</td>
+                            <td class="adlog-nw adlog-mut">@r.AdminEmail</td>
+                            <td class="adlog-act">@ActionText(r.Action)</td>
+                            <td class="adlog-nw">@r.Target</td>
+                            <td>@r.Detail</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (pgs > 1)
+{
+    <div class="adlog-pager">
+        @if (pg > 1) { <a href="/Admin/Audit?page=@(pg - 1)">← Trang trước</a> } else { <span class="dis">← Trang trước</span> }
+        <span>Trang @pg / @pgs</span>
+        @if (pg < pgs) { <a href="/Admin/Audit?page=@(pg + 1)">Trang sau →</a> } else { <span class="dis">Trang sau →</span> }
+    </div>
+}

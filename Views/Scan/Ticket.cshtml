@@ -1,0 +1,140 @@
+@using CinemaApp.Controllers
+@model ScanView
+@{
+    ViewData["Title"] = "Kiểm tra vé";
+    ViewData["Dark"] = true;
+    var b = Model.Booking;
+    string banner = Model.State switch
+    {
+        "ok" => "HỢP LỆ",
+        "used" => "ĐÃ SỬ DỤNG",
+        "early" => "CHƯA ĐẾN GIỜ VÀO RẠP",
+        "late" => "SUẤT ĐÃ KẾT THÚC",
+        "unpaid" => "CHƯA THANH TOÁN, ĐÃ HỦY HOẶC ĐÃ HOÀN TIỀN",
+        "wrongcinema" => "VÉ CỦA RẠP KHÁC",
+        "nocinema" => "CHƯA CHỌN RẠP ĐANG LÀM VIỆC",
+        _ => "KHÔNG TÌM THẤY VÉ"
+    };
+    var msg = TempData["ScanMsg"] as string;
+}
+
+<style>
+    .tk-head{margin:0 0 16px}
+    .tk-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .tk-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text);letter-spacing:2px;word-break:break-all}
+    .tk-head p{margin:0;font-size:14px}
+    .tk-head a{color:var(--a-gold)}
+    .tk-alert{max-width:900px;margin:0 0 14px;padding:12px 16px;border:1px solid #6b5a3a;border-left:4px solid var(--a-gold);border-radius:8px;background:var(--a-bg2);color:var(--a-text);font-size:14px}
+    .tk-banner{max-width:900px;padding:24px 18px;text-align:center;font-size:clamp(22px,5vw,34px);font-weight:800;letter-spacing:3px;border-radius:12px;border:2px solid}
+    .tk-banner.ok{background:rgba(120,200,120,.14);border-color:#4caf50;color:#9be39b}
+    .tk-banner.bad{background:rgba(164,19,43,.2);border-color:var(--a-wine);color:#ff9aa6}
+    .tk-go{max-width:900px;margin-top:14px}
+    .tk-go form{margin:0}
+    .tk-go .a-btn,.tk-go a.a-btn{display:block;width:100%;text-align:center;padding:18px;font-size:18px;font-weight:800;box-sizing:border-box}
+    .tk-no{padding:14px;text-align:center;color:var(--a-mute);font-size:14px;border:1px dashed var(--a-line);border-radius:10px;margin-bottom:10px}
+    .tk-child{max-width:900px;margin-top:14px;padding:14px 18px;border:2px solid #ffb74d;border-radius:10px;background:rgba(255,183,77,.1);color:#ffe0b2;font-size:14px;line-height:1.5}
+    .tk-child b{color:#ffb74d}
+    .tk-card{max-width:900px;margin-top:14px;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:22px 24px}
+    .tk-card h3{margin:0 0 16px;font-size:20px;color:var(--a-gold)}
+    .tk-facts{display:grid;grid-template-columns:130px 1fr;gap:12px 16px;font-size:14px;margin:0}
+    .tk-facts dt{color:var(--a-mute);font-weight:400}
+    .tk-facts dd{margin:0;color:var(--a-text)}
+    .tk-seat{display:inline-block;border:1px solid var(--a-gold);color:var(--a-gold);border-radius:6px;padding:3px 10px;font-size:12px;margin:0 6px 4px 0}
+    .tk-seat.child{border-color:#ff9aa6;color:#ff9aa6}
+    .tk-muted{color:var(--a-mute)}
+    .tk-back{max-width:900px;margin-top:14px}
+    .tk-back a{display:block;text-align:center;padding:13px;border:1px solid #6b5a3a;border-radius:10px;color:var(--a-gold);font-weight:700;text-decoration:none}
+    .tk-back a:hover{border-color:var(--a-gold);background:rgba(230,162,60,.08)}
+    @@media(max-width:700px){
+        .tk-facts{grid-template-columns:100px 1fr}
+        .tk-card{padding:18px 16px}
+    }
+</style>
+
+<div class="tk-head">
+    <div class="eb">QUẢN TRỊ · QUÉT VÉ</div>
+    <h1>@(string.IsNullOrEmpty(Model.Code) ? "Kiểm tra vé" : Model.Code)</h1>
+</div>
+
+@if (!string.IsNullOrEmpty(msg))
+{
+    <div class="tk-alert">@msg</div>
+}
+
+<div class="tk-banner @(Model.State == "ok" ? "ok" : "bad")">@banner</div>
+
+@if (Model.State == "wrongcinema" || Model.State == "nocinema")
+{
+    <div class="tk-alert" style="margin-top:14px">@Model.Message @if (Model.CanChangeCinema) { <a href="/Admin/Scan" style="color:var(--a-gold)">Đổi rạp đang làm việc</a> }</div>
+}
+else if (!string.IsNullOrEmpty(Model.WorkingCinema))
+{
+    <div class="tk-muted" style="max-width:900px;margin-top:10px;font-size:13px">Đang quét tại rạp: <b>@Model.WorkingCinema</b>@if (Model.CanChangeCinema) { <text> · <a href="/Admin/Scan" style="color:var(--a-gold)">đổi rạp</a></text> }</div>
+}
+
+@if (b != null)
+{
+    var st = b.Showtime;
+    var start = st.StartTime.AddHours(7);
+    bool hasChild = Model.Seats.Any(s => s.IsChild);
+
+    <div class="tk-go">
+        @if (Model.State == "ok")
+        {
+            <form method="post" action="/Admin/Ticket/@Model.Code/CheckIn" onsubmit="this.querySelector('button').disabled = true;">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="a-btn">Cho vào</button>
+            </form>
+        }
+        else
+        {
+            <div class="tk-no">Không cho vào</div>
+        }
+    </div>
+
+    @if (hasChild)
+    {
+        <div class="tk-child">
+            <b>Có vé TRẺ EM</b>: hỏi tuổi của trẻ (dưới 13 tuổi, đi cùng người lớn).
+            Nếu không đúng đối tượng, thu thêm <b>@Model.ChildDiff.ToString("N0") đ</b> (chênh lệch so với giá người lớn)
+            hoặc từ chối vào rạp.
+        </div>
+    }
+
+    <div class="tk-card">
+        <h3>@st.Movie.Title</h3>
+        <dl class="tk-facts">
+            <dt>Phân loại</dt><dd>@CinemaApp.Models.AgeRatings.Describe(st.Movie.AgeRating)</dd>
+            <dt>Rạp</dt><dd>@st.Room.Cinema.Name</dd>
+            <dt>Suất chiếu</dt><dd>@start.ToString("HH:mm") · @start.ToString("dd/MM/yyyy")</dd>
+            <dt>Phòng</dt><dd>@st.Room.Name (@st.Room.Type) · @st.Format</dd>
+            <dt>Ghế và loại vé</dt>
+            <dd>
+                @foreach (var s in Model.Seats)
+                {
+                    <span class="tk-seat @(s.IsChild ? "child" : "")">@s.Label · @s.TypeName</span>
+                }
+            </dd>
+            <dt>Bắp nước</dt>
+            <dd>
+                @if (b.Items.Count > 0)
+                {
+                    foreach (var i in b.Items) { <div>@i.Quantity × @i.Product.Name</div> }
+                }
+                else { <span class="tk-muted">Không chọn</span> }
+            </dd>
+            <dt>Thanh toán</dt><dd>@b.PaymentMethod · @b.Total.ToString("N0") đ</dd>
+            @if (b.DiscountAmount > 0)
+            {
+                <dt>Giảm giá</dt><dd>− @b.DiscountAmount.ToString("N0") đ (mã @b.VoucherCode)</dd>
+            }
+            @if (b.CheckedInAt.HasValue)
+            {
+                <dt>Đã quét</dt>
+                <dd>@b.CheckedInAt.Value.AddHours(7).ToString("HH:mm dd/MM/yyyy") · @b.CheckedInByEmail</dd>
+            }
+        </dl>
+    </div>
+}
+
+<div class="tk-back"><a href="/Admin/Scan">Quét vé khác</a></div>

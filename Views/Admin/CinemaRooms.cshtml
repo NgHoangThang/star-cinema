@@ -1,0 +1,100 @@
+@using CinemaApp.Controllers
+@using CinemaApp.Models
+@model List<AdminRoomRow>
+@{
+    var cinema = (Cinema)ViewBag.Cinema;
+    var types = (string[])ViewBag.Types;
+    ViewData["Title"] = "Phòng chiếu";
+    ViewData["Dark"] = true;
+    var msg = TempData["AdminMsg"] as string;
+}
+
+<style>
+    .rm-head{margin:0 0 16px;max-width:1000px}
+    .rm-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .rm-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .rm-head p{margin:0;font-size:14px;color:var(--a-mute)}
+    .rm-head a{color:var(--a-gold);font-size:13px}
+    .rm-alert{max-width:1000px;margin:0 0 14px;padding:12px 16px;border:1px solid #6b5a3a;border-left:4px solid var(--a-gold);border-radius:8px;background:var(--a-bg2);color:var(--a-text);font-size:14px}
+    .rm-card{max-width:1000px;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:16px 18px;margin:0 0 14px}
+    .rm-card h2{font-size:16px;margin:0 0 12px;color:var(--a-text)}
+    .rm-form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .rm-form label{display:block;font-size:12px;color:var(--a-mute);margin:0 0 4px}
+    .rm-form input,.rm-form select{background:#14100c;border:1px solid var(--a-line);border-radius:8px;color:var(--a-text);padding:8px 10px;font-size:14px}
+    .rm-form input[type=number]{width:90px}
+    .rm-form input[type=text]{width:160px}
+    .rm-hint{font-size:12px;color:var(--a-mute);margin:10px 0 0}
+    .rm-row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+    .rm-title{font-weight:700;font-size:16px;color:var(--a-text)}
+    .rm-sub{font-size:13px;color:var(--a-mute)}
+    .rm-link{background:none;border:0;color:var(--a-gold);text-decoration:underline;cursor:pointer;font-size:13px;padding:0}
+    .rm-link.del{color:#ff8a98}
+    .rm-more{margin-top:12px;border-top:1px solid var(--a-line);padding-top:12px}
+    .rm-more summary{cursor:pointer;color:var(--a-gold);font-size:13px}
+    .rm-more form{margin:10px 0 0}
+</style>
+
+<div class="rm-head">
+    <div class="eb">QUẢN TRỊ · RẠP</div>
+    <h1>@cinema.Name</h1>
+    <p>@cinema.City.Name · @cinema.Address · @cinema.Hotline</p>
+    <a href="/Admin/Cinemas">‹ Về danh sách rạp</a>
+</div>
+
+@if (!string.IsNullOrEmpty(msg))
+{
+    <div class="rm-alert">@msg</div>
+}
+
+<div class="rm-card">
+    <h2>Thêm phòng chiếu</h2>
+    <form method="post" action="/Admin/Cinemas/Rooms/@cinema.Id/Add" class="rm-form">
+        @Html.AntiForgeryToken()
+        <div><label>Tên phòng</label><input type="text" name="name" maxlength="40" placeholder="Phòng 4" required /></div>
+        <div><label>Loại phòng</label>
+            <select name="type">@foreach (var t in types) { <option value="@t">@t</option> }</select></div>
+        <div><label>Số hàng ghế</label><input type="number" name="rows" value="8" min="3" max="12" /></div>
+        <div><label>Ghế mỗi hàng</label><input type="number" name="perRow" value="14" min="6" max="20" /></div>
+        <div><label>VIP từ hàng thứ</label><input type="number" name="vipFromRow" value="6" min="0" max="12" /></div>
+        <button class="a-btn" type="submit">Thêm phòng</button>
+    </form>
+    <p class="rm-hint">Hàng ghế đặt tên A, B, C...; hàng thứ 1 là hàng A. Nhập 0 ở ô VIP nếu phòng không có ghế VIP.</p>
+</div>
+
+@foreach (var r in Model)
+{
+    <div class="rm-card">
+        <div class="rm-row">
+            <div>
+                <div class="rm-title">@r.Name · @r.Type</div>
+                <div class="rm-sub">@r.Seats ghế (@r.Rows hàng, @r.VipSeats VIP) · @r.Upcoming suất sắp tới / tổng @r.Showtimes</div>
+            </div>
+            <form method="post" action="/Admin/Cinemas/Room/@r.Id/Delete" onsubmit="return confirm('Xóa phòng này?')">
+                @Html.AntiForgeryToken()
+                <button class="rm-link del" type="submit">Xóa phòng</button>
+            </form>
+        </div>
+        <details class="rm-more">
+            <summary>Sửa tên / loại phòng, làm lại sơ đồ ghế</summary>
+            <form method="post" action="/Admin/Cinemas/Room/@r.Id/Edit" class="rm-form">
+                @Html.AntiForgeryToken()
+                <div><label>Tên phòng</label><input type="text" name="name" value="@r.Name" maxlength="40" required /></div>
+                <div><label>Loại phòng</label>
+                    <select name="type">@foreach (var t in types) { <option value="@t" selected="@(t == r.Type)">@t</option> }</select></div>
+                <button class="a-btn" type="submit">Lưu</button>
+            </form>
+            <form method="post" action="/Admin/Cinemas/Room/@r.Id/Layout" class="rm-form" onsubmit="return confirm('Tạo lại toàn bộ ghế của phòng này?')">
+                @Html.AntiForgeryToken()
+                <div><label>Số hàng</label><input type="number" name="rows" value="@(r.Rows == 0 ? 8 : r.Rows)" min="3" max="12" /></div>
+                <div><label>Ghế mỗi hàng</label><input type="number" name="perRow" value="@(r.Rows == 0 ? 14 : Math.Max(6, Math.Min(20, r.Seats / r.Rows)))" min="6" max="20" /></div>
+                <div><label>VIP từ hàng thứ</label><input type="number" name="vipFromRow" value="0" min="0" max="12" /></div>
+                <button class="a-btn" type="submit">Tạo lại ghế</button>
+            </form>
+            <p class="rm-hint">Chỉ đổi loại phòng hoặc sơ đồ ghế được khi phòng chưa có suất chiếu nào.</p>
+        </details>
+    </div>
+}
+@if (Model.Count == 0)
+{
+    <div class="rm-card" style="color:var(--a-mute)">Rạp này chưa có phòng nào.</div>
+}

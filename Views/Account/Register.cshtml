@@ -1,0 +1,65 @@
+@model CinemaApp.Models.RegisterViewModel
+@{
+    ViewData["Title"] = "Đăng ký";
+    Layout = "_AuthLayout";
+    ViewData["SideTitle"] = "Vào rạp theo cách của bạn";
+    ViewData["SideText"] = "Một tài khoản để đặt vé, lưu vé và tích điểm.";
+}
+
+<h1>Đăng ký tài khoản</h1>
+<p class="sa-sub">Chúng tôi sẽ gửi email để xác nhận tài khoản của bạn</p>
+
+<form asp-action="Register" method="post">
+    <div asp-validation-summary="ModelOnly" class="sa-error"></div>
+    <input type="hidden" asp-for="ReturnUrl" />
+
+    <div class="sa-hp" aria-hidden="true">
+        <label>Để trống ô này</label>
+        <input asp-for="HpCheck" tabindex="-1" autocomplete="off" />
+    </div>
+
+    <div class="sa-field">
+        <label asp-for="FullName"></label>
+        <input asp-for="FullName" autocomplete="name" placeholder="Nguyễn Văn A" />
+        <span asp-validation-for="FullName" class="sa-ferr"></span>
+    </div>
+
+    <div class="sa-two">
+        <div class="sa-field">
+            <label asp-for="Email"></label>
+            <input asp-for="Email" type="email" autocomplete="email" placeholder="ten@email.com" />
+            <span asp-validation-for="Email" class="sa-ferr"></span>
+        </div>
+        <div class="sa-field">
+            <label asp-for="Phone"></label>
+            <input asp-for="Phone" autocomplete="tel" placeholder="0912345678" />
+            <span asp-validation-for="Phone" class="sa-ferr"></span>
+        </div>
+    </div>
+
+    <div class="sa-two">
+        <div class="sa-field">
+            <label asp-for="Password"></label>
+            <div class="sa-pw">
+                <input asp-for="Password" autocomplete="new-password" placeholder="Tối thiểu 8 ký tự" />
+                <button type="button" class="sa-eye" data-toggle-pw aria-label="Hiện hoặc ẩn mật khẩu"></button>
+            </div>
+            <span asp-validation-for="Password" class="sa-ferr"></span>
+        </div>
+        <div class="sa-field">
+            <label asp-for="ConfirmPassword"></label>
+            <div class="sa-pw">
+                <input asp-for="ConfirmPassword" autocomplete="new-password" placeholder="Nhập lại mật khẩu" />
+                <button type="button" class="sa-eye" data-toggle-pw aria-label="Hiện hoặc ẩn mật khẩu"></button>
+            </div>
+            <span asp-validation-for="ConfirmPassword" class="sa-ferr"></span>
+        </div>
+    </div>
+    <small class="sa-note">Mật khẩu cần ít nhất 8 ký tự, gồm chữ thường và chữ số.</small>
+
+    <button type="submit" class="st-btn primary sa-block">Đăng ký</button>
+</form>
+
+<p class="sa-foot">Đã có tài khoản?
+    <a href="/Account/Login?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl ?? "")">Đăng nhập</a>
+</p>

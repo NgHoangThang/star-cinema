@@ -1,0 +1,34 @@
+﻿@model ErrorViewModel
+@{
+    ViewData["Title"] = "Có lỗi xảy ra";
+    ViewData["Dark"] = true;
+}
+
+<style>
+    .a-err{min-height:calc(100vh - 260px);display:flex;align-items:center;justify-content:center;padding:40px 16px;background:radial-gradient(ellipse at 50% 0%,#2b2013 0%,#0e0c0a 65%)}
+    .a-errbox{max-width:620px;text-align:center}
+    .a-errcode{font-size:clamp(70px,16vw,130px);font-weight:800;line-height:1;background:linear-gradient(180deg,#ffd27a,#c9861d);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:6px}
+    .a-errbox h1{font-size:clamp(22px,4vw,30px);font-weight:800;margin:10px 0 8px;color:var(--a-text)}
+    .a-errbox p{color:var(--a-mute);font-size:15px;margin:0 0 20px}
+    .a-errid{display:inline-block;border:1px dashed #6b5a3a;border-radius:4px;padding:6px 12px;font-size:12px;color:var(--a-mute);margin-bottom:22px}
+    .a-errid code{color:var(--a-gold)}
+    .a-errbtns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+</style>
+
+<div class="a-err">
+    <div class="a-errbox">
+        <div class="a-errcode">500</div>
+        <h1>Rạp đang gặp sự cố</h1>
+        <p>Có lỗi xảy ra khi xử lý yêu cầu của bạn. Bạn có thể thử lại sau ít phút. Nếu đã giữ ghế hoặc đặt vé, thông tin của bạn vẫn được lưu lại trong mục Vé của tôi.</p>
+
+        @if (Model.ShowRequestId)
+        {
+            <div class="a-errid">Mã lỗi để báo cho chúng tôi: <code>@Model.RequestId</code></div>
+        }
+
+        <div class="a-errbtns">
+            <a href="/" class="a-btn">Về trang chủ</a>
+            <a href="/Tickets" class="a-btn ghost">Vé của tôi</a>
+        </div>
+    </div>
+</div>

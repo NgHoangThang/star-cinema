@@ -1,0 +1,282 @@
+@using CinemaApp.Controllers
+@using CinemaApp.Models
+@model List<AdminShowtimeRow>
+@{
+    ViewData["Title"] = "Suất chiếu";
+    ViewData["Dark"] = true;
+    var msg = TempData["AdminMsg"] as string;
+    string date = ViewBag.Date;
+    string today = ViewBag.Today;
+    int? cinemaId = ViewBag.CinemaId;
+    int? movieId = ViewBag.MovieId;
+    var cinemas = (List<Cinema>)ViewBag.Cinemas;
+    var rooms = (List<Room>)ViewBag.Rooms;
+    var movies = (IEnumerable<dynamic>)ViewBag.Movies;
+    var languages = (string[])ViewBag.Languages;
+    var dayDate = DateTime.ParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+    string prev = dayDate.AddDays(-1).ToString("yyyy-MM-dd");
+    string next = dayDate.AddDays(1).ToString("yyyy-MM-dd");
+    string Nav(string d) => "/Admin/Showtimes?date=" + d + (cinemaId.HasValue ? "&cinemaId=" + cinemaId : "") + (movieId.HasValue ? "&movieId=" + movieId : "");
+}
+
+<style>
+    .shw-head{margin:0 0 16px;max-width:1100px}
+    .shw-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .shw-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .shw-head p{margin:0;font-size:14px;color:var(--a-mute)}
+    .shw-alert{max-width:1100px;margin:0 0 14px;padding:12px 16px;border:1px solid #6b5a3a;border-left:4px solid var(--a-gold);border-radius:8px;background:var(--a-bg2);color:var(--a-text);font-size:14px}
+    .shw-card{max-width:1100px;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:18px 20px;margin:0 0 18px}
+    .shw-card h3{margin:0 0 12px;font-size:16px;color:var(--a-gold)}
+    .shw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 14px}
+    .shw-f label{display:block;font-size:11px;letter-spacing:1px;color:var(--a-mute);margin:0 0 5px}
+    .shw-f input,.shw-f select{width:100%;box-sizing:border-box;background:#14100c;border:1px solid #6b5a3a;border-radius:6px;color:var(--a-text);padding:8px 10px;font-size:14px}
+    .shw-f input:focus,.shw-f select:focus{outline:none;border-color:var(--a-gold)}
+    .shw-hint{font-size:12px;color:var(--a-mute);margin-top:10px}
+    .shw-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;max-width:1100px;margin:0 0 14px}
+    .shw-bar .shw-f{min-width:150px}
+    .shw-day{display:flex;gap:8px;align-items:center;margin:0 0 12px;max-width:1100px}
+    .shw-day a{border:1px solid #6b5a3a;border-radius:6px;padding:5px 12px;color:var(--a-gold);text-decoration:none;font-size:13px}
+    .shw-day b{color:var(--a-text);font-size:15px}
+    .shw-table{width:100%;max-width:1100px;border-collapse:collapse;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;overflow:hidden}
+    .shw-table th{text-align:left;font-size:12px;letter-spacing:1px;color:var(--a-mute);font-weight:600;padding:11px 12px;border-bottom:1px solid var(--a-line)}
+    .shw-table td{padding:9px 12px;border-bottom:1px solid var(--a-line);font-size:14px;color:var(--a-text);vertical-align:middle}
+    .shw-table tr:last-child td{border-bottom:0}
+    .shw-table tr.past td{opacity:.5}
+    .shw-sub{font-size:12px;color:var(--a-mute)}
+    .shw-promo{color:var(--a-gold2,#f2c46d);font-size:12px}
+    .shw-pr{display:flex;gap:6px;align-items:center}
+    .shw-pr form{margin:0;display:flex;gap:6px;align-items:center}
+    .shw-pr input{width:92px;background:#14100c;border:1px solid #6b5a3a;border-radius:6px;color:var(--a-text);padding:5px 8px;font-size:13px}
+    .shw-link{background:none;border:0;color:var(--a-gold);text-decoration:underline;cursor:pointer;font-size:13px;padding:0}
+    .shw-link.del{color:#ff8a98}
+    @@media(max-width:900px){
+        .shw-grid{grid-template-columns:1fr 1fr}
+        .shw-table th:nth-child(4),.shw-table td:nth-child(4){display:none}
+    }
+</style>
+
+<div class="shw-head">
+    <div class="eb">QUẢN TRỊ · SUẤT CHIẾU</div>
+    <h1>Lịch chiếu</h1>
+    <p>Tạo suất chiếu cho phim đang chiếu. Hệ thống tự tính giờ kết thúc (thời lượng phim + 15 phút quảng cáo), tự chặn suất trùng giờ trong cùng phòng (nghỉ 10 phút dọn phòng) và chỉ xóa được suất chưa có đơn đặt vé.</p>
+</div>
+
+@if (!string.IsNullOrEmpty(msg))
+{
+    <div class="shw-alert">@msg</div>
+}
+
+<form method="post" action="/Admin/Showtimes/Create" class="shw-card">
+    @Html.AntiForgeryToken()
+    <h3>Thêm suất chiếu</h3>
+    <div class="shw-grid">
+        <div class="shw-f">
+            <label>PHIM *</label>
+            <select name="movieId" required>
+                <option value="">— Chọn phim đang chiếu —</option>
+                @foreach (var m in movies)
+                {
+                    <option value="@m.Id">@m.Title (@m.DurationMin phút)</option>
+                }
+            </select>
+        </div>
+        <div class="shw-f">
+            <label>RẠP *</label>
+            <select name="cinemaId" id="shw-cinema" required>
+                <option value="">— Chọn rạp —</option>
+                <option value="0">Tất cả rạp</option>
+                @foreach (var c in cinemas)
+                {
+                    <option value="@c.Id" selected="@(cinemaId == c.Id)">@c.Name</option>
+                }
+            </select>
+        </div>
+        <div class="shw-f">
+            <label>PHÒNG *</label>
+            <select name="roomId" id="shw-room" required>
+                <option value="">— Chọn phòng —</option>
+                <option value="0" data-all="1">Tất cả phòng của rạp</option>
+                @foreach (var r in rooms)
+                {
+                    <option value="@r.Id" data-cinema="@r.CinemaId" data-type="@r.Type">@r.Name · @r.Type</option>
+                }
+            </select>
+        </div>
+        <div class="shw-f">
+            <label>NGÔN NGỮ *</label>
+            <select name="language">
+                @foreach (var l in languages) { <option value="@l">@l</option> }
+            </select>
+        </div>
+        <div class="shw-f">
+            <label>TỪ NGÀY *</label>
+            <input type="date" name="fromDate" value="@today" min="@today" required />
+        </div>
+        <div class="shw-f">
+            <label>ĐẾN NGÀY</label>
+            <input type="date" name="toDate" value="@today" min="@today" />
+        </div>
+        <div class="shw-f">
+            <label>GIỜ CHIẾU * (cách nhau dấu phẩy)</label>
+            <input type="text" name="times" placeholder="09:00, 12:30, 16:00, 19:30" required />
+        </div>
+        <div class="shw-f">
+            <label>GIÁ CƠ BẢN (Đ) *</label>
+            <input type="number" name="basePrice" id="shw-price" value="90000" min="30000" max="1000000" step="1000" required />
+        </div>
+    </div>
+    <div class="shw-hint">Định dạng chiếu tự theo loại phòng (2D, 4DX, SCREENX). Chọn "Tất cả phòng" hoặc "Tất cả rạp" thì giá tự theo loại phòng (2D 90.000, 4DX 153.000, GOLDCLASS 180.000, SCREENX 130.000, cuối tuần +20.000) và suất nào trùng giờ sẽ được bỏ qua. Suất sớm trước 12:00 giảm 20%, thứ Tư giảm 25% sẽ tự áp lên giá cơ bản. Khách chỉ xem được lịch chiếu 14 ngày tới.</div>
+    <div style="margin-top:14px"><button type="submit" class="a-btn">Tạo suất chiếu</button></div>
+</form>
+
+<form method="post" action="/Admin/Showtimes/DeleteMany" class="shw-card"  id="shw-clean">
+    @Html.AntiForgeryToken()
+    <h3>Dọn lịch chiếu</h3>
+    <div class="shw-grid">
+        <div class="shw-f">
+            <label>TỪ NGÀY</label>
+            <input type="date" name="fromDate" value="@today" min="@today" required />
+        </div>
+        <div class="shw-f">
+            <label>ĐẾN NGÀY</label>
+            <input type="date" name="toDate" value="@today" min="@today" />
+        </div>
+        <div class="shw-f">
+            <label>RẠP</label>
+            <select name="cinemaId">
+                <option value="">Tất cả rạp</option>
+                @foreach (var c in cinemas) { <option value="@c.Id">@c.Name</option> }
+            </select>
+        </div>
+        <div class="shw-f">
+            <label>PHIM</label>
+            <select name="movieId">
+                <option value="">Tất cả phim</option>
+                @foreach (var m in movies) { <option value="@m.Id">@m.Title</option> }
+            </select>
+        </div>
+    </div>
+    <div class="shw-hint">Chỉ xóa suất ở tương lai và chưa có đơn đặt vé nào (kể cả đơn đã hủy). Suất đã có đơn luôn được giữ lại. Dùng để lấy chỗ trống trước khi xếp phim mới.</div>
+    <div style="margin-top:14px"><button type="submit" class="a-btn ghost">Xóa các suất chưa có đơn</button></div>
+</form>
+
+<div class="shw-day">
+    <a href="@Nav(prev)">‹ Hôm trước</a>
+    <b>@dayDate.ToString("dd/MM/yyyy")</b>
+    <a href="@Nav(next)">Hôm sau ›</a>
+    <a href="@Nav(today)">Hôm nay</a>
+</div>
+
+<form method="get" action="/Admin/Showtimes" class="shw-bar">
+    <div class="shw-f">
+        <label>NGÀY</label>
+        <input type="date" name="date" value="@date" />
+    </div>
+    <div class="shw-f">
+        <label>LỌC THEO RẠP</label>
+        <select name="cinemaId">
+            <option value="">Tất cả rạp</option>
+            @foreach (var c in cinemas)
+            {
+                <option value="@c.Id" selected="@(cinemaId == c.Id)">@c.Name</option>
+            }
+        </select>
+    </div>
+    <div class="shw-f">
+        <label>LỌC THEO PHIM</label>
+        <select name="movieId">
+            <option value="">Tất cả phim</option>
+            @foreach (var m in movies)
+            {
+                <option value="@m.Id" selected="@(movieId == (int?)m.Id)">@m.Title</option>
+            }
+        </select>
+    </div>
+    <button type="submit" class="a-btn ghost">Xem</button>
+</form>
+
+<table class="shw-table">
+    <thead>
+        <tr><th>GIỜ</th><th>PHIM</th><th>RẠP · PHÒNG</th><th>ĐỊNH DẠNG</th><th>GIÁ</th><th>ĐƠN</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var s in Model)
+        {
+            <tr class="@(s.Past ? "past" : "")">
+                <td><b>@s.Start</b><div class="shw-sub">đến @s.End</div></td>
+                <td>@s.MovieTitle</td>
+                <td>@s.CinemaName<div class="shw-sub">@s.RoomName · @s.RoomType</div></td>
+                <td>@s.Format<div class="shw-sub">@s.Language</div></td>
+                <td>
+                    <div>@s.EffectivePrice.ToString("N0") đ</div>
+                    @if (s.Promo != null) { <div class="shw-promo">@s.Promo (gốc @s.BasePrice.ToString("N0"))</div> }
+                    else { <div class="shw-sub">giá cơ bản</div> }
+                </td>
+                <td>@s.ActiveBookings<div class="shw-sub">@(s.TotalBookings > s.ActiveBookings ? (s.TotalBookings - s.ActiveBookings) + " đã hủy/hết hạn" : "")</div></td>
+                <td>
+                    <div class="shw-pr">
+                        <form method="post" action="/Admin/Showtimes/Price/@s.Id">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="date" value="@date" />
+                            <input type="hidden" name="cinemaId" value="@cinemaId" />
+                            <input type="hidden" name="movieId" value="@movieId" />
+                            <input type="number" name="basePrice" value="@((int)s.BasePrice)" min="30000" max="1000000" step="1000" title="Giá cơ bản" />
+                            <button type="submit" class="shw-link">Lưu giá</button>
+                        </form>
+                        @if (s.TotalBookings == 0)
+                        {
+                            <form method="post" action="/Admin/Showtimes/Delete/@s.Id" onsubmit="return confirm('Xóa suất chiếu này?')">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="date" value="@date" />
+                                <input type="hidden" name="cinemaId" value="@cinemaId" />
+                                <input type="hidden" name="movieId" value="@movieId" />
+                                <button type="submit" class="shw-link del">Xóa</button>
+                            </form>
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (Model.Count == 0)
+        {
+            <tr><td colspan="7" style="text-align:center;color:var(--a-mute)">Không có suất chiếu nào trong ngày này.</td></tr>
+        }
+    </tbody>
+</table>
+
+<script>(function(){var f=document.getElementById('shw-clean');if(!f)return;f.addEventListener('submit',function(e){if(f.dataset.ok==='1')return;e.preventDefault();var p=new URLSearchParams(new FormData(f));p.delete('__RequestVerificationToken');fetch('/Admin/Showtimes/DeleteCount?'+p.toString(),{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(d){if(!d.total){alert('Không có suất chiếu tương lai nào trong phạm vi đã chọn.');return;}if(!d.deletable){alert('Có '+d.total+' suất trong phạm vi nhưng tất cả đã có đơn đặt vé nên sẽ được giữ lại.');return;}var keep=d.total-d.deletable;if(confirm('Sẽ xóa '+d.deletable+' suất chiếu'+(keep>0?' (giữ lại '+keep+' suất đã có đơn)':'')+'. Không khôi phục được. Tiếp tục?')){f.dataset.ok='1';f.submit();}}).catch(function(){alert('Không đếm được số suất. Thử lại.');});});})();</script><script>
+    (function () {
+        var cin = document.getElementById('shw-cinema');
+        var room = document.getElementById('shw-room');
+        var price = document.getElementById('shw-price');
+        var def = { '2D': 90000, '4DX': 153000, 'GOLDCLASS': 180000, 'SCREENX': 130000 };
+        function sync() {
+            var c = cin.value;
+            // Chọn "Tất cả rạp": không chọn phòng (phòng gửi lên là 0 = mọi phòng)
+            room.disabled = (c === '0');
+            Array.prototype.forEach.call(room.options, function (o) {
+                if (!o.value && o.value !== '0') return;
+                if (o.getAttribute('data-all')) { o.hidden = (c === ''); o.disabled = (c === ''); return; }
+                var ok = c && c !== '0' && o.getAttribute('data-cinema') === c;
+                o.hidden = !ok;
+                o.disabled = !ok;
+            });
+            var cur = room.options[room.selectedIndex];
+            if (cur && cur.disabled) room.value = '';
+            multi();
+        }
+        function multi() {
+            var all = cin.value === '0' || room.value === '0';
+            price.disabled = all;
+            price.title = all ? 'Giá tự theo loại phòng' : '';
+        }
+        cin.addEventListener('change', sync);
+        room.addEventListener('change', function () {
+            var o = room.options[room.selectedIndex];
+            var t = o && o.getAttribute('data-type');
+            if (t && def[t]) price.value = def[t];
+            multi();
+        });
+        sync();
+    })();
+</script>

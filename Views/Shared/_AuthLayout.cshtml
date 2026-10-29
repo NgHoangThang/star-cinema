@@ -1,0 +1,28 @@
+@{
+    Layout = "_Layout";
+    ViewData["Dark"] = true;
+    var sideTitle = ViewData["SideTitle"] as string ?? "";
+    var sideText = ViewData["SideText"] as string ?? "";
+}
+
+<div class="sa-wrap">
+    <div class="sa-card">
+        <aside class="sa-side">
+            <div class="sa-brand">
+                <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                    <polygon points="12,2 14.9,8.6 22,9.3 16.6,14 18.2,21 12,17.3 5.8,21 7.4,14 2,9.3 9.1,8.6" fill="#ffc83d" />
+                </svg>
+                STAR CINEMA
+            </div>
+            <h2>@sideTitle</h2>
+            <p>@sideText</p>
+        </aside>
+        <section class="sa-main">
+            @RenderBody()
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

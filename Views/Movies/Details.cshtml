@@ -1,0 +1,235 @@
+@model CinemaApp.Models.Movie
+@{
+    ViewData["Title"] = Model.Title;
+    ViewData["Dark"] = true;
+    var related = (List<CinemaApp.Models.Movie>)ViewBag.Related;
+    var sch = (CinemaApp.Models.ScheduleViewModel)ViewBag.Schedule;
+    var dow = new[] { "CN", "T2", "T3", "T4", "T5", "T6", "T7" };
+    string selDate = sch.SelectedDate.ToString("yyyy-MM-dd");
+    string selFmt = Uri.EscapeDataString(sch.SelectedFormat ?? "");
+    string ageText = Model.AgeRating switch
+    {
+        "P" => "P: Phim dành cho mọi lứa tuổi",
+        "K" => "K: Phim dành cho trẻ em dưới 13 tuổi có người bảo hộ đi cùng",
+        "T13" => "T13: Phim dành cho khán giả từ đủ 13 tuổi trở lên",
+        "T16" => "T16: Phim dành cho khán giả từ đủ 16 tuổi trở lên",
+        "T18" => "T18: Phim dành cho khán giả từ đủ 18 tuổi trở lên",
+        _ => Model.AgeRating
+    };
+    string duration = Model.DurationMin > 0 ? $"{Model.DurationMin} phút" : "Đang cập nhật";
+    bool hasBackdrop = Model.BackdropUrl.StartsWith("http");
+}
+
+<style>
+    .a-dhero{position:relative;background:#14100c center/cover no-repeat;border-bottom:1px solid var(--a-line)}
+    .a-dhero::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(14,12,10,.96) 25%,rgba(14,12,10,.7) 60%,rgba(14,12,10,.88)),linear-gradient(0deg,#0e0c0a,transparent 40%)}
+    .a-dhero-in{position:relative;display:grid;grid-template-columns:280px 1fr;gap:40px;padding:48px;max-width:1280px;margin:0 auto}
+    .a-dposter{position:relative;border-radius:6px;overflow:hidden;border:1px solid var(--a-gold);box-shadow:0 24px 60px rgba(230,162,60,.22);align-self:start;aspect-ratio:2/3;background:var(--a-bg2)}
+    .a-dposter img{width:100%;height:100%;object-fit:cover;display:block}
+    .a-dposter .badge{position:absolute;top:10px;left:10px;background:var(--a-wine);color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:3px}
+    .a-dinfo h1{font-size:clamp(28px,4vw,44px);font-weight:800;margin:6px 0 12px;color:var(--a-text)}
+    .a-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .a-chip{border:1px solid #6b5a3a;border-radius:20px;padding:4px 12px;font-size:12px;color:var(--a-gold)!important;text-decoration:none}
+    .a-chip:hover{background:var(--a-gold);color:#1a1208!important}
+    .a-facts{display:grid;grid-template-columns:110px 1fr;gap:8px 16px;font-size:14px;margin:0 0 22px}
+    .a-facts dt{color:var(--a-mute);font-weight:400}
+    .a-facts dd{margin:0;color:var(--a-text)}
+    .a-dsec{padding:40px 48px 0;max-width:1280px;margin:0 auto}
+    .a-dsec p.txt{color:#d8cfbf;line-height:1.75;margin:16px 0 0;max-width:900px}
+    .a-trailer{margin-top:16px;position:relative;padding-top:42%;border-radius:6px;overflow:hidden;border:1px solid var(--a-line);max-width:900px}
+    .a-trailer iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+    .a-empty{margin-top:16px;padding:26px;border:1px dashed #6b5a3a;border-radius:6px;color:var(--a-mute);text-align:center}
+    .a-days{display:flex;gap:8px;overflow-x:auto;margin-top:18px;padding-bottom:6px}
+    .a-day{flex:0 0 auto;min-width:68px;text-align:center;padding:10px 8px;border:1px solid var(--a-line);border-radius:6px;background:var(--a-bg2);text-decoration:none;color:var(--a-mute)!important;transition:border-color .2s,transform .2s}
+    .a-day small{display:block;font-size:11px}
+    .a-day b{display:block;font-size:20px;color:var(--a-text)}
+    .a-day:hover{border-color:var(--a-gold);transform:translateY(-2px)}
+    .a-day.active{background:var(--a-gold);border-color:var(--a-gold);color:#1a1208!important}
+    .a-day.active b{color:#1a1208}
+    .a-where{color:var(--a-mute);font-size:13px;margin:14px 0 0}
+    .a-where b{color:var(--a-gold)}
+    .a-fmts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    .a-fmt{border:1px solid var(--a-line);border-radius:4px;padding:7px 14px;font-size:13px;color:var(--a-mute)!important;text-decoration:none}
+    .a-fmt.active{border-color:var(--a-gold);color:var(--a-gold)!important;background:rgba(230,162,60,.1)}
+    .a-cin{margin-top:18px;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:6px;padding:18px 20px}
+    .a-cin h4{margin:0;font-size:17px;color:var(--a-gold)}
+    .a-addr{color:var(--a-mute);font-size:13px;margin:2px 0 12px}
+    .a-roomtype{font-size:12px;letter-spacing:1px;color:var(--a-mute);margin:10px 0 8px;text-transform:uppercase}
+    .a-slots{display:flex;gap:10px;flex-wrap:wrap}
+    .a-slot{min-width:84px;text-align:center;padding:9px 12px;border:1px solid #6b5a3a;border-radius:4px;text-decoration:none;color:var(--a-text)!important;background:#14100c;transition:transform .15s,border-color .15s,box-shadow .15s}
+    .a-slot b{display:block;font-size:16px}
+    .a-slot small{display:block;font-size:11px;color:var(--a-mute)}
+    .a-slot small.promo{color:var(--a-gold2)}
+    .a-slot:hover{border-color:var(--a-gold);transform:translateY(-2px);box-shadow:0 8px 20px rgba(230,162,60,.25)}
+    .a-slot.past{opacity:.35;pointer-events:none}
+    .a-card .poster img{width:100%;height:100%;object-fit:cover;display:block}
+    .a-card .play{position:absolute;right:8px;bottom:8px;width:40px;height:40px;border-radius:50%;border:1px solid var(--a-gold);background:rgba(14,12,10,.75);color:var(--a-gold);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .2s}
+    .a-card:hover .play{opacity:1}
+    .a-card .t a{color:var(--a-text)!important;text-decoration:none}
+    @@media(max-width:900px){
+        .a-dhero-in{grid-template-columns:1fr;padding:24px 16px;gap:22px}
+        .a-dposter{max-width:220px}
+        .a-dsec{padding:32px 16px 0}
+        .a-facts{grid-template-columns:90px 1fr}
+        .a-trailer{padding-top:56%}
+    }
+</style>
+
+<section class="a-dhero" style="@(hasBackdrop ? $"background-image:url('{Model.BackdropUrl}')" : "")">
+    <div class="a-dhero-in">
+        <div class="a-dposter st-tilt">
+            <img src="@Model.PosterUrl" alt="@Model.Title" />
+            <span class="badge">@Model.AgeRating</span>
+        </div>
+        <div class="a-dinfo">
+            <div class="a-kicker">@(Model.Status == "NowShowing" ? "ĐANG CHIẾU" : Model.Status == "Ended" ? "NGỪNG CHIẾU" : "SẮP CHIẾU")</div>
+            <h1>@Model.Title</h1>
+            <div class="a-chips">
+                @foreach (var g in Model.Genres)
+                {
+                    <a href="/Movies?genre=@g.Id" class="a-chip">@g.Name</a>
+                }
+            </div>
+            <dl class="a-facts">
+                <dt>Đạo diễn</dt><dd>@Model.Director</dd>
+                <dt>Diễn viên</dt><dd>@Model.Cast</dd>
+                <dt>Quốc gia</dt><dd>@CinemaApp.Helpers.CountryNames.Vi(Model.Country)</dd>
+                <dt>Thời lượng</dt><dd>@duration</dd>
+                <dt>Khởi chiếu</dt><dd>@Model.ReleaseDate.ToString("dd/MM/yyyy")</dd>
+                <dt>Phân loại</dt><dd>@CinemaApp.Models.AgeRatings.Describe(Model.AgeRating)</dd>
+            </dl>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <a href="#lich-chieu" class="a-btn">MUA VÉ</a>
+                @if (!string.IsNullOrEmpty(Model.TrailerUrl))
+                {
+                    <a href="#trailer" class="a-btn ghost">Xem trailer</a>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="a-dsec">
+    <h2 class="a-h">Nội dung</h2>
+    <p class="txt">@(string.IsNullOrWhiteSpace(Model.Synopsis) ? "Nội dung đang được cập nhật." : Model.Synopsis)</p>
+</section>
+
+<section class="a-dsec" id="trailer">
+    <h2 class="a-h">Trailer</h2>
+    @if (!string.IsNullOrEmpty(Model.TrailerUrl))
+    {
+        <div class="a-trailer">
+            <iframe src="@CinemaApp.Services.TrailerLinks.Normalize(Model.TrailerUrl)" title="Trailer @Model.Title" loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen></iframe>
+        </div>
+    }
+    else
+    {
+        <div class="a-empty">Phim này chưa có trailer.</div>
+    }
+</section>
+
+<section class="a-dsec" id="lich-chieu">
+    <h2 class="a-h">Lịch chiếu</h2>
+
+    @if (Model.Status == "Ended") { <div class="a-empty">Phim đã ngừng chiếu.</div> }
+    else if (Model.Status == "ComingSoon")
+    {
+        <div class="a-empty">Phim sắp chiếu, chưa mở bán suất chiếu.</div>
+    }
+    else
+    {
+        <div class="a-days">
+            @foreach (var day in sch.Days)
+            {
+                <a class="a-day @(day == sch.SelectedDate ? "active" : "")"
+                   href="/Movies/Details/@Model.Id?date=@day.ToString("yyyy-MM-dd")&fmt=@selFmt#lich-chieu">
+                    <small>@dow[(int)day.DayOfWeek] · Th@(day.Month)</small>
+                    <b>@day.Day.ToString("00")</b>
+                </a>
+            }
+        </div>
+
+        <p class="a-where">Thành phố: <b>@sch.City</b> (đổi thành phố ở góc trên bên phải)</p>
+
+        @if (sch.Formats.Count > 0)
+        {
+            <div class="a-fmts">
+                @foreach (var f in sch.Formats)
+                {
+                    <a class="a-fmt @(f == sch.SelectedFormat ? "active" : "")"
+                       href="/Movies/Details/@Model.Id?date=@selDate&fmt=@Uri.EscapeDataString(f)#lich-chieu">@f</a>
+                }
+            </div>
+        }
+
+        @if (sch.Cinemas.Count == 0)
+        {
+            <div class="a-empty">Không có suất chiếu cho ngày này tại @sch.City. Hãy thử chọn ngày hoặc thành phố khác.</div>
+        }
+        else
+        {
+            foreach (var c in sch.Cinemas)
+            {
+                <div class="a-cin">
+                    <h4>@c.Name</h4>
+                    <div class="a-addr">@c.Address</div>
+                    @foreach (var g in c.Groups)
+                    {
+                        <div class="a-roomtype">Rạp @g.RoomType</div>
+                        <div class="a-slots">
+                            @foreach (var s in g.Slots)
+                            {
+                                <a class="a-slot @(s.Past ? "past" : "")" href="/Booking/Seats/@s.Id"
+                                   title="@s.Price.ToString("N0")đ@(s.Promo != null ? " · " + s.Promo : "")">
+                                    <b>@s.Time</b>
+                                    <small class="@(s.Promo != null ? "promo" : "")">@((s.Price / 1000).ToString("0"))K</small>
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    }
+</section>
+
+@if (related.Count > 0)
+{
+    <section class="a-dsec">
+        <h2 class="a-h">Phim khác</h2>
+        <div class="a-grid">
+            @foreach (var m in related.Take(5))
+            {
+                @await Html.PartialAsync("_MovieCardA", m)
+            }
+        </div>
+    </section>
+}
+
+<div class="modal fade" id="trailerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content lh-modal">
+            <button type="button" class="btn-close btn-close-white lh-modal-x" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            <div class="lh-video">
+                <iframe id="trailerFrame" src="" title="Trailer" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.addEventListener('load', function () {
+            var modal = document.getElementById('trailerModal');
+            var frame = document.getElementById('trailerFrame');
+            modal.addEventListener('show.bs.modal', function (e) {
+                var u = e.relatedTarget && e.relatedTarget.getAttribute('data-trailer');
+                if (!u) return;
+                frame.src = u + (u.indexOf('?') > -1 ? '&' : '?') + 'autoplay=1';
+            });
+            modal.addEventListener('hidden.bs.modal', function () { frame.src = ''; });
+        });
+    </script>
+}

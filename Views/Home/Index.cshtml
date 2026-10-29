@@ -1,0 +1,214 @@
+﻿@model CinemaApp.Models.HomeViewModel
+@using CinemaApp.Models
+@{
+    ViewData["Title"] = "Trang chủ";
+    ViewData["Dark"] = true;     // không bọc khung kem
+    bool signedIn = User.Identity?.IsAuthenticated == true;
+}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<style>
+    .a-hero{display:block;height:auto;padding:34px 0 52px}
+    .a-sw{width:100%;padding:10px 0 34px}
+    .a-sw .swiper-slide{width:min(760px,78vw);height:340px;border-radius:6px;border:1px solid var(--a-gold);overflow:hidden;opacity:.5;transition:opacity .4s;background:#241d15 center/cover no-repeat;box-shadow:0 20px 60px rgba(230,162,60,.2)}
+    .a-sw .swiper-slide-active{opacity:1}
+    .a-sw .swiper-slide img{width:100%;height:100%;object-fit:cover;display:block}
+    .a-sw .shade{position:absolute;inset:0;background:linear-gradient(0deg,rgba(14,12,10,.93),rgba(14,12,10,.05) 68%)}
+    .a-sw .body{position:absolute;left:30px;right:30px;bottom:26px}
+    .a-sw .body h2{font-size:clamp(24px,4vw,42px);font-weight:800;margin:4px 0 6px;color:#f3ece0}
+    .a-sw .body .meta{font-size:13px;color:var(--a-mute);margin-bottom:12px}
+    .a-sw .swiper-pagination-bullet{background:#5a4a30;opacity:1}
+    .a-sw .swiper-pagination-bullet-active{background:var(--a-gold);width:22px;border-radius:6px}
+    .a-sw .swiper-pagination{bottom:0}
+    .a-quick{grid-template-columns:200px minmax(0,1fr) 170px;align-items:stretch}
+    .a-quick b{display:flex;align-items:center;padding:0 20px;color:var(--a-gold);font-size:14px;border-right:1px solid var(--a-line)}
+    .a-tabs{display:flex;gap:8px;margin-left:auto}
+    .a-tab{background:transparent;border:1px solid var(--a-line);color:var(--a-mute);padding:8px 16px;border-radius:4px;font-size:13px;cursor:pointer}
+    .a-tab.active{background:var(--a-gold);color:#1a1208;border-color:var(--a-gold);font-weight:700}
+    .a-headrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+    .a-card .poster img{width:100%;height:100%;object-fit:cover;display:block}
+    .a-card .play{position:absolute;right:8px;bottom:8px;width:40px;height:40px;border-radius:50%;border:1px solid var(--a-gold);background:rgba(14,12,10,.75);color:var(--a-gold);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .2s}
+    .a-card:hover .play{opacity:1}
+    .a-card .t a{color:var(--a-text)!important;text-decoration:none}
+    .a-promo{padding:22px;min-height:150px;display:block;text-decoration:none;color:var(--a-text)!important;position:relative;overflow:hidden}
+    .a-promo h3{font-size:18px;font-weight:800;color:var(--a-gold);margin:0 0 6px}
+    .a-promo p{font-size:13px;color:var(--a-mute);margin:0;max-width:70%}
+    .a-promo img{position:absolute;right:10px;bottom:6px;height:120px;transition:transform .4s}
+    .a-promo:hover img{transform:scale(1.08) rotate(-4deg)}
+    .a-member{margin:44px 48px 0;display:grid;grid-template-columns:1.2fr 1fr;gap:30px;align-items:center;background:linear-gradient(120deg,#2b2013,#14100c);border:1px solid var(--a-gold);border-radius:6px;padding:34px}
+    .a-member h2{font-size:24px;font-weight:800;margin:0 0 8px}
+    .a-member p{color:var(--a-mute);font-size:14px}
+    .a-member ul{list-style:none;padding:0;margin:14px 0 18px;display:flex;gap:10px;flex-wrap:wrap}
+    .a-member li{border:1px solid #6b5a3a;border-radius:4px;padding:8px 12px;font-size:12px;color:var(--a-mute)}
+    .a-member li b{display:block;color:var(--a-gold);font-size:14px}
+    @@media(max-width:900px){
+        .a-quick{grid-template-columns:1fr}
+        .a-quick b{padding:12px 20px;border-right:0}
+        .a-member{grid-template-columns:1fr;margin:36px 16px 0}
+        .a-tabs{margin-left:0}
+        .a-promo p{max-width:60%}
+    }
+</style>
+
+<section class="a-hero">
+    <div class="swiper a-sw" id="a-sw">
+        <div class="swiper-wrapper">
+            @foreach (var bn in Model.Banners)
+            {
+                <div class="swiper-slide"><a href="@bn.LinkUrl"><img src="@bn.ImageUrl" alt="@bn.Title" /></a></div>
+            }
+            @foreach (var m in Model.Hero)
+            {
+                <div class="swiper-slide" style="background-image:url('@m.BackdropUrl')">
+                    <div class="shade"></div>
+                    <div class="body">
+                        <div class="a-kicker">ĐANG CHIẾU</div>
+                        <h2>@m.Title</h2>
+                        <div class="meta">@m.AgeRating · @(m.DurationMin > 0 ? $"{m.DurationMin} phút" : "Đang cập nhật") · @m.ReleaseDate.ToString("dd/MM/yyyy")</div>
+                        <div class="acts" style="display:flex;gap:12px;flex-wrap:wrap">
+                            <a href="/Movies/Details/@m.Id#lich-chieu" class="a-btn">ĐẶT VÉ</a>
+                            <a href="/Movies/Details/@m.Id" class="a-btn ghost">Chi tiết</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="swiper-pagination"></div>
+    </div>
+</section>
+
+<section class="a-quick">
+    <b>MUA VÉ NHANH</b>
+    <select id="a-q-movie" aria-label="Chọn phim">
+        <option value="">1. Chọn phim đang chiếu</option>
+        @foreach (var m in Model.NowShowing)
+        {
+            <option value="@m.Id">@m.Title</option>
+        }
+    </select>
+    <button type="button" id="a-q-go">XEM SUẤT CHIẾU</button>
+</section>
+
+<section class="a-sec st-reveal">
+    <div class="a-headrow">
+        <h2 class="a-h">Phim</h2>
+        <div class="a-tabs">
+            <button class="a-tab active" data-bs-toggle="tab" data-bs-target="#a-now" type="button">Đang chiếu (@Model.NowShowing.Count)</button>
+            <button class="a-tab" data-bs-toggle="tab" data-bs-target="#a-soon" type="button">Sắp chiếu (@Model.ComingSoon.Count)</button>
+        </div>
+    </div>
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="a-now">
+            <div class="a-grid">
+                @foreach (var m in Model.NowShowing.Take(10)) { @await Html.PartialAsync("_MovieCardA", m) }
+            </div>
+            @if (Model.NowShowing.Count > 10)
+            {
+                <div style="text-align:center;margin-top:22px"><a class="a-btn ghost" href="/Movies?status=NowShowing">Xem tất cả phim đang chiếu</a></div>
+            }
+        </div>
+        <div class="tab-pane fade" id="a-soon">
+            <div class="a-grid">
+                @foreach (var m in Model.ComingSoon.Take(10)) { @await Html.PartialAsync("_MovieCardA", m) }
+            </div>
+            @if (Model.ComingSoon.Count > 10)
+            {
+                <div style="text-align:center;margin-top:22px"><a class="a-btn ghost" href="/Movies?status=ComingSoon">Xem tất cả phim sắp chiếu</a></div>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="a-sec st-reveal">
+    <div class="a-headrow">
+        <h2 class="a-h" id="uu-dai">Ưu đãi</h2>
+        <small style="color:var(--a-mute)">Giá rẻ hơn theo giờ và theo ngày, không cần mã</small><a class="a-btn ghost" href="/Offers" style="margin-left:auto">Xem tất cả ưu đãi</a>
+    </div>
+    <div class="a-tiles">
+        <a class="a-tile a-promo" href="/Offers">
+            <h3>Suất sớm</h3>
+            <p>Các suất chiếu buổi sáng có giá vé thấp hơn.</p>
+        </a>
+        <a class="a-tile a-promo" href="/Offers">
+            <h3>Thứ Tư ưu đãi</h3>
+            <p>Mọi suất chiếu trong ngày thứ Tư được giảm giá.</p>
+        </a>
+        <a class="a-tile a-promo" href="/Offers">
+            <h3>Combo bắp nước</h3>
+            <p>Chọn kèm khi đặt vé, nhận tại quầy.</p>
+            <img src="/images/combos/2.png" alt="" />
+        </a>
+    </div>
+</section>
+
+<section class="a-member st-reveal" id="thanh-vien">
+    <div>
+        <h2>Thành viên Star</h2>
+        <p>Tích điểm sau mỗi lần xem phim, điểm càng nhiều hạng càng cao.</p>
+        <ul>
+            @foreach (var t in ProfileViewModel.Tiers)
+            {
+                <li><b>@t.Name</b>từ @t.From điểm</li>
+            }
+        </ul>
+        <a class="a-btn" href="@(signedIn ? "/Member" : "/Account/Register")">@(signedIn ? "Điểm của tôi" : "Đăng ký thành viên")</a>
+    </div>
+    <div class="lh-ticket3d" aria-hidden="true">
+        <div class="lh-ticket-inner">
+            <div class="lh-face front"><i>&#9733;</i>STAR CINEMA<small>ADMIT ONE</small></div>
+            <div class="lh-face back"><i>&#9733;</i>MEMBER<small>STAR CINEMA</small></div>
+        </div>
+    </div>
+</section>
+
+<div class="modal fade" id="trailerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content lh-modal">
+            <button type="button" class="btn-close btn-close-white lh-modal-x" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            <div class="lh-video">
+                <iframe id="trailerFrame" src="" title="Trailer" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script>
+        window.addEventListener('load', function () {
+            // Mua vé nhanh
+            var sel = document.getElementById('a-q-movie');
+            document.getElementById('a-q-go').addEventListener('click', function () {
+                if (sel.value) { location.href = '/Movies/Details/' + sel.value + '#lich-chieu'; }
+                else { sel.focus(); }
+            });
+
+            // Banner coverflow 3D, thấy 2 tấm hai bên
+            new Swiper('#a-sw', {
+                effect: 'coverflow', grabCursor: true, centeredSlides: true, slidesPerView: 'auto',
+                loop: true, observer: true, observeParents: true,
+                coverflowEffect: { rotate: 28, stretch: 0, depth: 180, modifier: 1, slideShadows: false },
+                autoplay: { delay: 5000, disableOnInteraction: false },
+                pagination: { el: '#a-sw .swiper-pagination', clickable: true }
+            });
+
+            // Tab phim
+            document.querySelectorAll('.a-tab').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    document.querySelectorAll('.a-tab').forEach(function (x) { x.classList.remove('active'); });
+                    b.classList.add('active');
+                });
+            });
+
+            // Xem trailer ngay trong trang
+            var modal = document.getElementById('trailerModal');
+            var frame = document.getElementById('trailerFrame');
+            modal.addEventListener('show.bs.modal', function (e) {
+                var u = e.relatedTarget && e.relatedTarget.getAttribute('data-trailer');
+                if (!u) return;
+                frame.src = u + (u.indexOf('?') > -1 ? '&' : '?') + 'autoplay=1';
+            });
+            modal.addEventListener('hidden.bs.modal', function () { frame.src = ''; });
+        });
+    </script>
+}

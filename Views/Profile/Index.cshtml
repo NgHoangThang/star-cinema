@@ -1,0 +1,149 @@
+@model CinemaApp.Models.ProfileViewModel
+@{
+    ViewData["Title"] = "Hồ sơ cá nhân";
+    ViewData["Dark"] = true;
+    var initial = string.IsNullOrWhiteSpace(Model.FullName) ? "?" : Model.FullName.Trim().Substring(0, 1).ToUpper();
+    var msg = TempData["ProfileMsg"] as string;
+    var next = Model.Next;
+}
+
+<style>
+    .a-pf{max-width:1100px;margin:0 auto;padding:0 24px 40px}
+    .a-pfhead{display:flex;align-items:center;gap:22px;padding:40px 0 26px;flex-wrap:wrap}
+    .a-pfav{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#ffd27a,#c9861d);color:#1a1208;font-size:36px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px #0e0c0a,0 0 0 5px var(--a-gold),0 14px 40px rgba(230,162,60,.3)}
+    .a-pfhead h1{font-size:clamp(24px,3.4vw,32px);font-weight:800;margin:0;color:var(--a-text)}
+    .a-pfhead p{margin:2px 0 8px;color:var(--a-mute);font-size:14px}
+    .a-pfbadge{display:inline-block;border:1px solid var(--a-gold);color:var(--a-gold);font-size:11px;letter-spacing:2px;font-weight:700;padding:4px 12px;border-radius:20px;background:rgba(230,162,60,.1)}
+    .a-pfgrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:start}
+    .a-pfcol{display:grid;gap:22px}
+    .a-pfcard{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:8px;padding:24px;transition:border-color .2s}
+    .a-pfcard:hover{border-color:#6b5a3a}
+    .a-pfcard h3{margin:0 0 16px;font-size:16px;font-weight:800;letter-spacing:1px;color:var(--a-gold);text-transform:uppercase}
+    .a-pfcard .f label{display:block;font-size:13px;color:var(--a-mute);margin-bottom:6px}
+    .a-pfcard input{width:100%;background:#14100c;color:var(--a-text);border:1px solid #6b5a3a;border-radius:4px;padding:11px 14px;font-size:14px;outline:0;margin-bottom:12px}
+    .a-pfcard input:focus{border-color:var(--a-gold);box-shadow:0 0 0 3px rgba(230,162,60,.18)}
+    .a-pfrows{margin-top:18px;border-top:1px dashed var(--a-line)}
+    .a-pfrow{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px dashed var(--a-line);font-size:14px;color:var(--a-text)}
+    .a-pfrow>span:first-child{color:var(--a-mute)}
+    .a-pfrow em{font-style:normal;font-size:11px;border-radius:3px;padding:2px 8px;margin-left:8px}
+    .a-pfrow em.ok{background:rgba(120,200,120,.15);color:#9be39b;border:1px solid #3d6b3d}
+    .a-pfrow em.warn{background:rgba(255,183,77,.12);color:#ffb74d;border:1px solid #6b5a3a}
+    .a-pfnote{color:var(--a-mute);font-size:13px;margin:0 0 14px}
+    .a-pfnote b{color:var(--a-text)}
+    .a-pfpoints{font-size:44px;font-weight:800;color:var(--a-gold);line-height:1}
+    .a-pfpoints small{font-size:14px;color:var(--a-mute);font-weight:400}
+    .a-pfbar{height:8px;border-radius:4px;background:#241d15;margin:14px 0 10px;overflow:hidden}
+    .a-pfbar i{display:block;height:100%;background:linear-gradient(90deg,#c9861d,#ffd27a);border-radius:4px}
+    .a-pftiers{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
+    .a-pftiers li{display:flex;justify-content:space-between;padding:9px 12px;border:1px solid var(--a-line);border-radius:4px;font-size:13px;color:var(--a-mute)}
+    .a-pftiers li b{color:var(--a-text)}
+    .a-pftiers li.on{border-color:var(--a-gold);background:rgba(230,162,60,.1)}
+    .a-pftiers li.on b{color:var(--a-gold)}
+    @@media(max-width:900px){
+        .a-pf{padding:0 16px 32px}
+        .a-pfgrid{grid-template-columns:1fr}
+    }
+</style>
+
+<div class="a-pf">
+    <div class="a-pfhead">
+        <div class="a-pfav">@initial</div>
+        <div>
+            <h1>@Model.FullName</h1>
+            <p>@Model.Email</p>
+            <span class="a-pfbadge">HẠNG @Model.Tier.ToUpper()</span>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(msg))
+    {
+        <div class="sa-ok" style="margin-bottom:18px;background:rgba(230,162,60,.1);border:1px solid #6b5a3a;border-left:4px solid var(--a-gold);color:#e9dfcb;border-radius:4px;padding:10px 14px;font-size:13px">@msg</div>
+    }
+
+    <div class="a-pfgrid">
+        <div class="a-pfcol">
+            <div class="a-pfcard">
+                <h3>Thông tin cá nhân</h3>
+
+                <form asp-action="Update" method="post">
+                    <div asp-validation-summary="ModelOnly" class="sa-error"></div>
+                    <div class="f">
+                        <label asp-for="FullName">Họ và tên</label>
+                        <input asp-for="FullName" autocomplete="name" />
+                        <span asp-validation-for="FullName" class="sa-ferr" style="display:block;color:#ff9aa6;font-size:12px;margin:-6px 0 10px"></span>
+                    </div>
+                    @if (!Model.BirthLocked)
+                    {
+                        <div class="f">
+                            <label for="BirthDate">Ngày sinh (chỉ nhập được một lần, dùng cho quà sinh nhật và ưu đãi U22)</label>
+                            <input id="BirthDate" name="BirthDate" type="date" value="@(Model.BirthDate?.ToString("yyyy-MM-dd"))" max="@DateTime.UtcNow.AddHours(7).ToString("yyyy-MM-dd")" />
+                            <span asp-validation-for="BirthDate" class="sa-ferr" style="display:block;color:#ff9aa6;font-size:12px;margin:-6px 0 10px"></span>
+                        </div>
+                    }
+                    <button type="submit" class="a-btn" style="padding:9px 20px">Lưu thay đổi</button>
+                </form>
+
+                <div class="a-pfrows">
+                    <div class="a-pfrow">
+                        <span>Email</span>
+                        <span>
+                            @Model.Email
+                            @if (Model.EmailConfirmed) { <em class="ok">Đã xác nhận</em> }
+                            else { <em class="warn">Chưa xác nhận</em> }
+                        </span>
+                    </div>
+                    <div class="a-pfrow">
+                        <span>Số điện thoại</span>
+                        <span>
+                            @(string.IsNullOrEmpty(Model.Phone) ? "Chưa có" : Model.Phone)
+                            @if (Model.PhoneConfirmed) { <em class="ok">Đã xác minh</em> }
+                            else { <a href="/Account/VerifyPhone?returnUrl=%2FProfile" style="margin-left:8px">Xác minh ngay</a> }
+                        </span>
+                    </div>
+                    <div class="a-pfrow">
+                        <span>Ngày sinh</span>
+                        <span>@(Model.BirthDate?.ToString("dd/MM/yyyy") ?? "Chưa có")</span>
+                    </div>
+                    <div class="a-pfrow">
+                        <span>Ngày tham gia</span>
+                        <span>@Model.CreatedAt.AddHours(7).ToString("dd/MM/yyyy")</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="a-pfcard">
+                <h3>Bảo mật</h3>
+                <p class="a-pfnote">Nên đổi mật khẩu định kỳ và không dùng chung với trang khác.</p>
+                <a href="/Account/ChangePassword" class="a-btn ghost" style="padding:9px 20px">Đổi mật khẩu</a>
+            </div>
+        </div>
+
+        <div class="a-pfcol">
+            <div class="a-pfcard">
+                <h3>Thành viên</h3>
+                <div class="a-pfpoints">@Model.Points <small>điểm</small></div>
+                <div class="a-pfbar"><i style="width:@(Model.Percent)%"></i></div>
+                @if (next != null)
+                {
+                    <p class="a-pfnote">Còn <b>@(next.Value.From - Model.Points)</b> điểm nữa để lên hạng <b>@next.Value.Name</b>.</p>
+                }
+                else
+                {
+                    <p class="a-pfnote">Bạn đang ở hạng cao nhất.</p>
+                }
+                <ul class="a-pftiers">
+                    @foreach (var t in CinemaApp.Models.ProfileViewModel.Tiers)
+                    {
+                        <li class="@(t.Name == Model.Tier ? "on" : "")"><b>@t.Name</b> <span>từ @t.From điểm</span></li>
+                    }
+                </ul>
+            </div>
+
+            <div class="a-pfcard">
+                <h3>Vé của tôi</h3>
+                <p class="a-pfnote">Xem vé đã đặt, đơn đang chờ thanh toán và lịch sử xem phim.</p>
+                <a href="/Tickets" class="a-btn" style="padding:9px 20px">Xem vé của tôi</a>
+            </div>
+        </div>
+    </div>
+</div>

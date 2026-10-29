@@ -1,0 +1,220 @@
+@model CinemaApp.Models.Booking
+@{
+    ViewData["Title"] = "Chọn bắp nước";
+    ViewData["Dark"] = true;
+    var products = (List<CinemaApp.Models.Product>)ViewBag.Products;
+    var st = Model.Showtime;
+    var start = st.StartTime.AddHours(7);
+    int left = (int)Math.Max(0, (Model.ExpiresAt - DateTime.UtcNow).TotalSeconds);
+    int seatsTotal = (int)Model.Seats.Sum(s => s.Price);
+    var current = Model.Items.ToDictionary(i => i.ProductId, i => i.Quantity);
+    var labels = Model.Seats
+        .OrderBy(x => x.Seat.RowLabel).ThenBy(x => x.Seat.SeatNumber)
+        .Select(x => x.Seat.RowLabel + x.Seat.SeatNumber).ToList();
+}
+
+<style>
+    .a-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .a-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .a-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 4px;color:var(--a-text)}
+    .a-pghead p{color:var(--a-mute);margin:0;font-size:14px}
+    .a-alert{margin:16px 48px 0;padding:12px 16px;border:1px solid var(--a-wine);border-left:4px solid var(--a-wine);border-radius:4px;background:var(--a-bg2);color:#ffd9de;font-size:14px}
+    .a-cblayout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;padding:28px 48px 0;max-width:1280px;margin:0 auto;align-items:start}
+    .a-cbgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .a-cb{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .2s,transform .2s,box-shadow .2s}
+    .a-cb:hover{border-color:#6b5a3a;transform:translateY(-3px)}
+    .a-cb.on{border-color:var(--a-gold);box-shadow:0 10px 30px rgba(230,162,60,.2)}
+    .a-cbimg{position:relative;height:170px;background:radial-gradient(circle at 50% 60%,#3a2c1a,#14100c);display:flex;align-items:center;justify-content:center}
+    .a-cbimg img{max-height:150px;max-width:80%;object-fit:contain;transition:transform .4s}
+    .a-cb:hover .a-cbimg img{transform:scale(1.07) rotate(-2deg)}
+    .a-cbimg svg{width:90px;height:90px}
+    .a-cbbadge{position:absolute;top:10px;left:10px;background:var(--a-wine);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:3px}
+    .a-cbbody{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+    .a-cbbody h4{margin:0;font-size:16px;color:var(--a-text)}
+    .a-cbbody p{margin:0;font-size:13px;color:var(--a-mute);flex:1}
+    .a-cbfoot{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+    .a-cbfoot b{color:var(--a-gold);font-size:16px}
+    .a-cbqty{display:flex;align-items:center;gap:10px}
+    .a-cbqty button{width:32px;height:32px;border-radius:50%;border:1px solid var(--a-gold);background:transparent;color:var(--a-gold);font-size:18px;line-height:1;cursor:pointer;transition:background .15s}
+    .a-cbqty button:hover{background:var(--a-gold);color:#1a1208}
+    .a-cbqty span{min-width:20px;text-align:center;font-weight:700;color:var(--a-text)}
+    .a-cbsum{position:sticky;top:90px;background:var(--a-bg2);border:1px solid var(--a-gold);border-radius:6px;padding:20px}
+    .a-cbsum h3{margin:0 0 12px;font-size:18px;color:var(--a-gold)}
+    .a-timerlabel{font-size:12px;color:var(--a-mute)}
+    .a-timer{font-size:34px;font-weight:800;letter-spacing:2px;color:var(--a-text);margin:2px 0 12px}
+    .a-timer.warn{color:#ffb74d}
+    .a-timer.over{color:#ff6b7d}
+    .a-cblines{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:0;padding:12px 0;border-top:1px dashed var(--a-line)}
+    .a-cblines dt{color:var(--a-mute);font-weight:400}
+    .a-cblines dd{margin:0;text-align:right;color:var(--a-text)}
+    .a-cbchosen{border-top:1px dashed var(--a-line);padding:10px 0;display:grid;gap:6px;font-size:13px;color:var(--a-text)}
+    .a-cbchosen div{display:flex;justify-content:space-between;gap:10px}
+    .a-cbchosen .cb-none{color:var(--a-mute);font-style:italic}
+    .a-cbtotal{border-top:1px dashed var(--a-line);padding-top:12px;margin-bottom:14px;color:var(--a-mute)}
+    .a-cbtotal b{color:var(--a-gold);font-size:24px}
+    .a-block{display:block;width:100%;text-align:center}
+    .a-gap{margin-top:10px}
+    .a-block:disabled{opacity:.4;cursor:not-allowed}
+    @@media(max-width:900px){
+        .a-pghead{padding:24px 16px 16px}
+        .a-alert{margin:16px 16px 0}
+        .a-cblayout{grid-template-columns:1fr;padding:20px 16px 0}
+        .a-cbgrid{grid-template-columns:1fr}
+        .a-cbsum{position:static}
+    }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+        <clipPath id="cb-clip"><path d="M12 28h40l-5 34H17z" /></clipPath>
+    </defs>
+    <symbol id="cb-bucket" viewBox="0 0 64 64">
+        <circle cx="20" cy="20" r="8" fill="#ffe08a" />
+        <circle cx="32" cy="15" r="9" fill="#fff0b8" />
+        <circle cx="44" cy="20" r="8" fill="#ffe08a" />
+        <circle cx="26" cy="26" r="7" fill="#ffd25f" />
+        <circle cx="38" cy="26" r="7" fill="#fff0b8" />
+        <path d="M12 28h40l-5 34H17z" fill="#ffffff" />
+        <g clip-path="url(#cb-clip)" fill="#ff2e63">
+            <rect x="16" y="28" width="6" height="34" />
+            <rect x="29" y="28" width="6" height="34" />
+            <rect x="42" y="28" width="6" height="34" />
+        </g>
+    </symbol>
+</svg>
+
+<div class="a-pghead">
+    <div class="eb">BƯỚC 2 · CHỌN BẮP NƯỚC</div>
+    <h1>Bắp nước cho suất chiếu</h1>
+    <p>@st.Movie.Title · @st.Room.Cinema.Name · @start.ToString("HH:mm dd/MM/yyyy")</p>
+</div>
+
+@if (TempData["BookErr"] is string err)
+{
+    <div class="a-alert">@err</div>
+}
+
+<div class="a-cblayout">
+    <div class="a-cbgrid">
+        @foreach (var p in products)
+        {
+            current.TryGetValue(p.Id, out var qty);
+            <div class="a-cb" data-id="@p.Id" data-name="@p.Name" data-price="@((int)p.Price)">
+                <div class="a-cbimg">
+                    @if (!string.IsNullOrEmpty(p.ImageUrl))
+                    {
+                        <img src="@p.ImageUrl" alt="@p.Name" />
+                    }
+                    else
+                    {
+                        <svg viewBox="0 0 64 64" aria-hidden="true"><use href="#cb-bucket" /></svg>
+                    }
+                    @if (!string.IsNullOrEmpty(p.Badge))
+                    {
+                        <span class="a-cbbadge">@p.Badge</span>
+                    }
+                </div>
+                <div class="a-cbbody">
+                    <h4>@p.Name</h4>
+                    <p>@p.Description</p>
+                    <div class="a-cbfoot">
+                        <b>@p.Price.ToString("N0") đ</b>
+                        <div class="a-cbqty">
+                            <button type="button" data-dec aria-label="Giảm">−</button>
+                            <span data-q>@qty</span>
+                            <button type="button" data-inc aria-label="Tăng">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <aside class="a-cbsum">
+        <h3>Đơn của bạn</h3>
+        <div class="a-timerlabel">Thời gian giữ ghế còn lại</div>
+        <div class="a-timer" id="pg-count" data-left="@left">--:--</div>
+
+        <dl class="a-cblines">
+            <dt>Ghế</dt><dd>@string.Join(", ", labels)</dd>
+            <dt>Tiền vé</dt><dd>@seatsTotal.ToString("N0") đ</dd>
+        </dl>
+        <div class="a-cbchosen" id="cb-chosen"></div>
+        <div class="a-cbtotal">Tổng: <b id="cb-total">0 đ</b></div>
+
+        <form asp-action="SaveCombos" asp-route-id="@Model.Id" method="post" id="cb-form">
+            <input type="hidden" name="items" id="cb-items" />
+            <button type="submit" class="a-btn a-block" id="cb-next">Tiếp tục</button>
+        </form>
+        <a href="/Booking/Seats/@Model.ShowtimeId" class="a-btn ghost a-block a-gap">Đổi ghế</a>
+        <div id="cb-expired" class="a-alert a-gap" style="display:none;margin:10px 0 0">
+            Đã hết thời gian giữ ghế. <a href="/Booking/Seats/@Model.ShowtimeId">Chọn lại ghế</a>
+        </div>
+    </aside>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var SEATS_TOTAL = @seatsTotal;
+            var MAX_PER = 10;
+            var cards = document.querySelectorAll('.a-cb');
+
+            function fmt(n) { return n.toLocaleString('vi-VN') + ' đ'; }
+
+            function render() {
+                var total = SEATS_TOTAL, parts = [], lines = [];
+                cards.forEach(function (c) {
+                    var q = parseInt(c.querySelector('[data-q]').textContent, 10) || 0;
+                    if (q > 0) {
+                        var price = parseInt(c.dataset.price, 10);
+                        total += q * price;
+                        parts.push(c.dataset.id + ':' + q);
+                        lines.push('<div><span>' + q + ' × ' + c.dataset.name + '</span><b>' + fmt(q * price) + '</b></div>');
+                    }
+                    c.classList.toggle('on', q > 0);
+                });
+                document.getElementById('cb-total').textContent = fmt(total);
+                document.getElementById('cb-items').value = parts.join(',');
+                document.getElementById('cb-chosen').innerHTML = lines.length
+                    ? lines.join('')
+                    : '<div class="cb-none">Chưa chọn bắp nước (không bắt buộc)</div>';
+                document.getElementById('cb-next').textContent = parts.length ? 'Tiếp tục' : 'Bỏ qua, tiếp tục';
+            }
+
+            cards.forEach(function (c) {
+                var qEl = c.querySelector('[data-q]');
+                c.querySelector('[data-inc]').addEventListener('click', function () {
+                    var q = parseInt(qEl.textContent, 10) || 0;
+                    if (q < MAX_PER) qEl.textContent = q + 1;
+                    render();
+                });
+                c.querySelector('[data-dec]').addEventListener('click', function () {
+                    var q = parseInt(qEl.textContent, 10) || 0;
+                    if (q > 0) qEl.textContent = q - 1;
+                    render();
+                });
+            });
+            render();
+
+            // Đồng hồ đếm ngược
+            var el = document.getElementById('pg-count');
+            var left = parseInt(el.getAttribute('data-left'), 10) || 0;
+            function two(n) { return (n < 10 ? '0' : '') + n; }
+            function tick() {
+                if (left <= 0) {
+                    el.textContent = '00:00';
+                    el.classList.add('over');
+                    document.getElementById('cb-expired').style.display = 'block';
+                    document.getElementById('cb-next').disabled = true;
+                    return;
+                }
+                el.textContent = two(Math.floor(left / 60)) + ':' + two(left % 60);
+                if (left <= 60) el.classList.add('warn');
+                left--;
+                setTimeout(tick, 1000);
+            }
+            tick();
+        })();
+    </script>
+}

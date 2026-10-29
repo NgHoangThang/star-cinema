@@ -1,0 +1,216 @@
+@using CinemaApp.Controllers
+@using CinemaApp.Models
+@model OffersView
+@{
+    ViewData["Title"] = "Ưu đãi";
+    ViewData["Dark"] = true;
+    bool signedIn = User.Identity?.IsAuthenticated == true;
+    int early = ShowtimePricing.EarlyPercent;
+    int wed = ShowtimePricing.PromoDayPercent;
+    decimal sample = 100000m;
+}
+
+<style>
+    .ofr-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .ofr-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .ofr-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 4px;color:var(--a-text)}
+    .ofr-pghead p{margin:0;font-size:14px;color:var(--a-mute)}
+    .ofr-wrap{max-width:1100px;margin:0 auto;padding:28px 24px 60px}
+    .ofr-h2{font-size:20px;font-weight:800;margin:38px 0 6px;color:var(--a-text);padding-left:12px;border-left:4px solid var(--a-gold)}
+    .ofr-h2:first-child{margin-top:0}
+    .ofr-sub{color:var(--a-mute);font-size:14px;margin:0 0 16px}
+
+    .ofr-big{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .ofr-card{position:relative;overflow:hidden;background:linear-gradient(135deg,#2b2013,#14100c);border:1px solid var(--a-gold);border-radius:14px;padding:26px}
+    .ofr-pct{font-size:56px;font-weight:800;line-height:1;color:var(--a-gold)}
+    .ofr-pct small{font-size:22px}
+    .ofr-card h3{font-size:20px;font-weight:800;margin:10px 0 6px;color:var(--a-text)}
+    .ofr-card p{margin:0 0 12px;font-size:14px;color:var(--a-mute);line-height:1.55}
+    .ofr-ex{display:inline-block;font-size:13px;color:var(--a-gold2);border:1px dashed var(--a-gold);border-radius:8px;padding:6px 12px}
+    .ofr-note{margin-top:14px;padding:12px 16px;border:1px dashed #6b5a3a;border-radius:8px;background:var(--a-bg2);color:var(--a-mute);font-size:13px;line-height:1.55}
+    .ofr-note b{color:var(--a-gold2)}
+
+    .ofr-combos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+    .ofr-combo{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+    .ofr-combo .im{height:170px;background:#14100c;display:flex;align-items:center;justify-content:center}
+    .ofr-combo .im img{max-height:150px;max-width:90%;object-fit:contain}
+    .ofr-combo .bd{padding:16px}
+    .ofr-combo h3{margin:0 0 4px;font-size:16px;font-weight:800;color:var(--a-text)}
+    .ofr-combo p{margin:0 0 10px;font-size:13px;color:var(--a-mute);min-height:36px}
+    .ofr-combo .pr{font-size:18px;font-weight:800;color:var(--a-gold)}
+    .ofr-combo .bg{display:inline-block;margin-left:8px;font-size:11px;letter-spacing:1px;color:var(--a-gold);border:1px solid var(--a-gold);border-radius:999px;padding:1px 9px;vertical-align:middle}
+
+    .ofr-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .ofr-step{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:18px}
+    .ofr-step b{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:rgba(230,162,60,.14);color:var(--a-gold);font-size:14px;margin-bottom:10px}
+    .ofr-step span{font-size:14px;color:var(--a-text);line-height:1.55}
+
+    .ofr-tiers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .ofr-tier{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:16px}
+    .ofr-tier .n{font-size:17px;font-weight:800}
+    .ofr-tier .m{font-size:13px;color:var(--a-mute);margin-top:4px}
+    .ofr-cta{margin-top:18px;display:flex;gap:12px;flex-wrap:wrap}
+
+    .ofr-vcs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+    .ofr-vc{display:flex;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;overflow:hidden}
+    .ofr-vc-main{flex:1;padding:16px 18px}
+    .ofr-vc-off{font-size:18px;font-weight:800;color:var(--a-gold);margin-bottom:8px}
+    .ofr-vc-main ul{margin:0;padding-left:18px;font-size:13px;color:var(--a-mute);line-height:1.7}
+    .ofr-vc-code{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;border-left:2px dashed #6b5a3a;background:rgba(230,162,60,.06);min-width:130px}
+    .ofr-vc-code span{font-weight:800;letter-spacing:1px;color:var(--a-gold2);font-size:16px}
+    .ofr-vc-code button{background:none;border:1px solid var(--a-gold);color:var(--a-gold);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer}
+    .ofr-vc-code button:hover{background:rgba(230,162,60,.12)}
+
+    @@media(max-width:900px){
+        .ofr-pghead{padding:24px 16px 16px}
+        .ofr-wrap{padding:20px 16px 50px}
+        .ofr-big,.ofr-steps{grid-template-columns:1fr}
+        .ofr-combos{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .ofr-tiers{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @@media(max-width:560px){.ofr-combos{grid-template-columns:1fr}}
+</style>
+
+<div class="ofr-pghead">
+    <div class="eb">STAR CINEMA</div>
+    <h1>Ưu đãi</h1>
+    <p>Giá vé rẻ hơn theo giờ và theo ngày, combo bắp nước, mã giảm giá và quyền lợi thành viên.</p>
+</div>
+
+<div class="ofr-wrap">
+    <h2 class="ofr-h2">Giá vé rẻ hơn, không cần mã</h2>
+    <p class="ofr-sub">Hệ thống tự giảm giá ở bước chọn suất chiếu, bạn chỉ cần chọn đúng giờ hoặc đúng ngày.</p>
+    <div class="ofr-big">
+        <div class="ofr-card">
+            <div class="ofr-pct">-@early<small>%</small></div>
+            <h3>Suất sớm</h3>
+            <p>Mọi suất chiếu bắt đầu trước @(ShowtimePricing.EarlyBeforeHour):00 sáng được giảm @early% giá vé.</p>
+            <span class="ofr-ex">Vé @sample.ToString("N0") đ chỉ còn @((sample * (100 - early) / 100).ToString("N0")) đ</span>
+        </div>
+        <div class="ofr-card">
+            <div class="ofr-pct">-@wed<small>%</small></div>
+            <h3>Thứ Tư ưu đãi</h3>
+            <p>Mọi suất chiếu trong ngày thứ Tư (cả ngày) được giảm @wed% giá vé.</p>
+            <span class="ofr-ex">Vé @sample.ToString("N0") đ chỉ còn @((sample * (100 - wed) / 100).ToString("N0")) đ</span>
+        </div>
+    </div>
+    <div class="ofr-note">
+        <b>Lưu ý:</b> hai ưu đãi này <b>không cộng dồn</b>. Suất nào đủ điều kiện cả hai thì được tính mức cao hơn (@Math.Max(early, wed)%).
+        Nhãn giảm giá hiện ngay trên từng suất chiếu, giá hiển thị là giá đã giảm.
+    </div>
+    <div class="ofr-card" style="margin-top:18px">
+        <div class="ofr-pct">-@TicketPricing.U22Percent<small>%</small></div>
+        <h3>Vé U22</h3>
+        <p>Dành cho khách từ @TicketPricing.U22MaxAge tuổi trở xuống: giảm @TicketPricing.U22Percent% giá vé ghế thường, tối đa @TicketPricing.U22MaxPerOrder vé mỗi đơn. Cần có ngày sinh trong Hồ sơ cá nhân và mang giấy tờ khi vào rạp. Không cộng dồn với Suất sớm và Thứ Tư, hệ thống lấy mức giá thấp hơn.</p>
+        <span class="ofr-ex">Vé @sample.ToString("N0") đ chỉ còn @((sample * (100 - TicketPricing.U22Percent) / 100).ToString("N0")) đ</span>
+    </div>
+    <div class="ofr-cta"><a class="a-btn" href="/Movies?status=NowShowing">Chọn phim và suất chiếu</a></div>
+
+    <h2 class="ofr-h2">Combo bắp nước</h2>
+    <p class="ofr-sub">Chọn kèm khi đặt vé, nhận tại quầy khi đến rạp.</p>
+    @if (Model.Combos.Count == 0)
+    {
+        <div class="ofr-note">Hiện chưa có combo nào đang bán.</div>
+    }
+    else
+    {
+        <div class="ofr-combos">
+            @foreach (var p in Model.Combos)
+            {
+                <div class="ofr-combo">
+                    <div class="im">
+                        @if (!string.IsNullOrEmpty(p.ImageUrl)) { <img src="@p.ImageUrl" alt="@p.Name" loading="lazy" /> }
+                    </div>
+                    <div class="bd">
+                        <h3>@p.Name</h3>
+                        <p>@p.Description</p>
+                        <span class="pr">@p.Price.ToString("N0") đ</span>
+                        @if (!string.IsNullOrEmpty(p.Badge)) { <span class="bg">@p.Badge</span> }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <h2 class="ofr-h2">Mã giảm giá</h2>
+    <p class="ofr-sub">Sao chép mã dưới đây, rồi nhập ở bước thanh toán.</p>
+    @if (Model.Vouchers.Count > 0)
+    {
+        <div class="ofr-vcs">
+            @foreach (var v in Model.Vouchers)
+            {
+                string off = v.DiscountType == "Percent"
+                    ? $"Giảm {v.Value:0.##}%" + (v.MaxDiscount > 0 ? $", tối đa {v.MaxDiscount:N0} đ" : "")
+                    : $"Giảm {v.Value:N0} đ";
+                <div class="ofr-vc">
+                    <div class="ofr-vc-main">
+                        <div class="ofr-vc-off">@off</div>
+                        <ul>
+                            <li>@(v.MinOrder > 0 ? $"Cho đơn từ {v.MinOrder:N0} đ" : "Không yêu cầu đơn tối thiểu")</li>
+                            <li>Đến hết @v.EndsAt.AddHours(7).AddSeconds(-1).ToString("dd/MM/yyyy")</li>
+                            @if (v.MaxUsesPerUser > 0) { <li>Mỗi tài khoản dùng @v.MaxUsesPerUser lần</li> }
+                            @if (v.MaxUses > 0) { <li>Còn @(v.MaxUses - v.Used) lượt</li> }
+                        </ul>
+                    </div>
+                    <div class="ofr-vc-code">
+                        <span>@v.Code</span>
+                        <button type="button" onclick="ofrCopy(this,'@v.Code')">Sao chép</button>
+                    </div>
+                </div>
+            }
+        </div>
+        <script>
+            function ofrCopy(btn, code) {
+                function done() {
+                    var old = btn.textContent;
+                    btn.textContent = 'Đã chép';
+                    setTimeout(function () { btn.textContent = old; }, 1500);
+                }
+                function fallback() {
+                    var t = document.createElement('textarea');
+                    t.value = code;
+                    document.body.appendChild(t);
+                    t.select();
+                    try { document.execCommand('copy'); } catch (e) { }
+                    document.body.removeChild(t);
+                    done();
+                }
+                if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(code).then(done, fallback);
+                else fallback();
+            }
+        </script>
+    }
+    else
+    {
+        <div class="ofr-note">Hiện chưa có mã công khai nào. Bạn quay lại sau nhé.</div>
+    }
+    <p class="ofr-sub" style="margin-top:22px">Cách dùng mã:</p>
+    <div class="ofr-steps">
+        <div class="ofr-step"><b>1</b><span>Chọn phim, suất chiếu, ghế và combo như bình thường.</span></div>
+        <div class="ofr-step"><b>2</b><span>Ở bước thanh toán, nhập mã vào ô "Mã giảm giá" rồi bấm Áp dụng.</span></div>
+        <div class="ofr-step"><b>3</b><span>Số tiền giảm hiện ngay trong đơn. Mỗi đơn dùng được một mã, mỗi mã có điều kiện và hạn dùng riêng.</span></div>
+    </div>
+
+    <h2 class="ofr-h2">Thành viên Star</h2>
+    <p class="ofr-sub">Cứ @MembershipRules.VndPerPoint.ToString("N0") đ bạn thực trả được 1 điểm, điểm được cộng khi vé của bạn được quét ở cổng rạp. Hạng tính theo điểm nhận trong 12 tháng gần nhất.</p>
+    <div class="ofr-tiers">
+        @foreach (var t in MembershipRules.Tiers)
+        {
+            <div class="ofr-tier">
+                <div class="n" style="color:@t.Color">@t.Name</div>
+             <div class="m">Từ @t.MinPoints.ToString("N0") điểm</div>
+                <div class="m" style="color:var(--a-text)">@t.Perk</div>
+            </div>
+        }
+    </div>
+    <div class="ofr-cta">
+        @if (signedIn)
+        {
+            <a class="a-btn" href="/Member">Xem điểm của tôi</a>
+        }
+        else
+        {
+            <a class="a-btn" href="/Account/Register">Đăng ký thành viên</a>
+        }
+    </div>
+</div>

@@ -1,0 +1,312 @@
+@using CinemaApp.Controllers
+@model List<VoucherRow>
+@{
+    ViewData["Title"] = "Mã giảm giá";
+    ViewData["Dark"] = true;
+    var now = DateTime.UtcNow;
+    var today = now.AddHours(7).Date;
+
+    string StatusText(VoucherRow v)
+    {
+        if (!v.IsActive) return "Đã tắt";
+        if (now > v.EndsAt) return "Hết hạn";
+        if (now < v.StartsAt) return "Chưa bắt đầu";
+        if (v.MaxUses > 0 && v.Used >= v.MaxUses) return "Hết lượt";
+        return "Đang chạy";
+    }
+    string StateKey(VoucherRow v) => StatusText(v) switch
+    {
+        "Đang chạy" => "run",
+        "Đã tắt" => "off",
+        "Chưa bắt đầu" => "soon",
+        _ => "ended"
+    };
+    string BadgeClass(VoucherRow v) => StateKey(v) switch
+    {
+        "run" => "ok",
+        "soon" => "info",
+        "ended" => "bad",
+        _ => "off"
+    };
+    string Discount(VoucherRow v) => v.DiscountType == "Percent"
+        ? $"{v.Value:0.##}%"
+        : $"{v.Value:N0} đ";
+    string DiscountNote(VoucherRow v) => v.DiscountType == "Percent"
+        ? (v.MaxDiscount > 0 ? $"Tối đa {v.MaxDiscount:N0} đ" : "Không giới hạn mức giảm")
+        : "Số tiền cố định";
+
+    // Mã riêng (quà sinh nhật...) không tính vào các con số tổng quan
+    var normal = Model.Where(v => !v.IsPrivate).ToList();
+    int total = normal.Count;
+    int running = normal.Count(v => StateKey(v) == "run");
+    int publicRunning = normal.Count(v => v.IsPublic && StateKey(v) == "run");
+    int usedSum = Model.Sum(v => v.Used);
+
+    var chips = new (string Label, string Key)[]
+    {
+        ("Tất cả", "all"), ("Đang chạy", "run"), ("Công khai", "public"), ("Đã tắt", "off"),
+        ("Hết hạn / hết lượt", "ended"), ("Chưa bắt đầu", "soon"), ("Mã riêng", "private")
+    };
+}
+
+<style>
+    .vc-head{margin:0 0 20px}
+    .vc-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .vc-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .vc-head p{margin:0;color:var(--a-mute);font-size:14px}
+
+    .vc-msg{margin:0 0 16px;padding:12px 16px;border:1px solid var(--a-gold);border-left:4px solid var(--a-gold);border-radius:6px;background:var(--a-bg2);color:var(--a-text);font-size:14px}
+
+    .vc-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}
+    .vc-kpi{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:16px 18px}
+    .vc-kpi span{display:block;font-size:12px;color:var(--a-mute);letter-spacing:.5px}
+    .vc-kpi b{display:block;font-size:26px;margin-top:4px;color:var(--a-gold);font-weight:800}
+
+    .vc-new{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;margin-bottom:18px}
+    .vc-new>summary{list-style:none;cursor:pointer;padding:16px 20px;display:flex;align-items:center;gap:10px;font-weight:700;color:var(--a-gold)}
+    .vc-new>summary::-webkit-details-marker{display:none}
+    .vc-new>summary::before{content:"+";display:grid;place-items:center;width:24px;height:24px;border-radius:6px;background:rgba(230,162,60,.14);font-size:18px;line-height:1}
+    .vc-new[open]>summary::before{content:"−"}
+    .vc-new[open]>summary{border-bottom:1px solid var(--a-line)}
+    .vc-form{padding:20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .vc-f{display:flex;flex-direction:column;gap:5px}
+    .vc-f.wide{grid-column:span 3}
+    .vc-f label{font-size:12px;color:var(--a-mute);letter-spacing:1px}
+    .vc-f input,.vc-f select{background:#14100c;border:1px solid #6b5a3a;border-radius:8px;color:var(--a-text);padding:9px 11px;font-size:14px}
+    .vc-f input:focus,.vc-f select:focus{outline:none;border-color:var(--a-gold)}
+    .vc-f small{color:var(--a-mute);font-size:11px}
+    .vc-submit{grid-column:span 3}
+
+    .vc-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+    .vc-chip{padding:8px 16px;border-radius:999px;border:1px solid var(--a-line);background:var(--a-bg2);color:var(--a-mute);font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+    .vc-chip:hover{border-color:#6b5a3a;color:var(--a-gold2)}
+    .vc-chip.active{border-color:var(--a-gold);color:var(--a-gold);background:rgba(230,162,60,.12)}
+
+    .vc-card{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;overflow:hidden}
+    .vc-wrap{overflow-x:auto}
+    .vc-table{width:100%;min-width:1060px;border-collapse:collapse;font-size:14px}
+    .vc-table th{text-align:left;font-size:11px;letter-spacing:1px;color:var(--a-mute);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--a-line);background:rgba(0,0,0,.2);white-space:nowrap}
+    .vc-table td{padding:14px;border-bottom:1px solid var(--a-line);color:var(--a-text);vertical-align:middle}
+    .vc-table tr:last-child td{border-bottom:0}
+    .vc-table tr:hover td{background:rgba(230,162,60,.03)}
+    .vc-table small{display:block;color:var(--a-mute);font-size:12px;margin-top:2px}
+    .vc-code{font-weight:800;letter-spacing:1px;color:var(--a-gold2);font-size:15px}
+    .vc-nw{white-space:nowrap}
+    .vc-disc{font-weight:800;font-size:16px;color:var(--a-gold)}
+    .vc-meter{height:5px;border-radius:5px;background:#2a231b;margin-top:6px;overflow:hidden;width:110px}
+    .vc-meter i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#e6a23c,#ffd27a)}
+
+    .vc-b{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid;white-space:nowrap}
+    .vc-b.ok{color:#7ee2a0;border-color:#2f7d4f;background:rgba(47,125,79,.12)}
+    .vc-b.info{color:#8fc5ff;border-color:#2f5f9a;background:rgba(47,95,154,.14)}
+    .vc-b.bad{color:#ff8f9d;border-color:#8f2a3a;background:rgba(164,19,43,.12)}
+    .vc-b.off{color:var(--a-mute);border-color:#4a4034}
+    .vc-tbtn{background:none;border:1px solid #6b5a3a;color:var(--a-gold);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer}
+    .vc-tbtn:hover{border-color:var(--a-gold);background:rgba(230,162,60,.08)}
+    .vc-tbtn.vc-del{border-color:#8f2a3a;color:#ff8f9d}
+    .vc-tbtn.vc-del:hover{border-color:#ff8f9d;background:rgba(164,19,43,.14)}
+    .vc-table form{margin:0}
+    .vc-empty{padding:48px 16px;text-align:center;color:var(--a-mute);font-size:14px}
+
+    @@media(max-width:900px){
+        .vc-kpis{grid-template-columns:1fr 1fr}
+        .vc-form{grid-template-columns:1fr}
+        .vc-f.wide,.vc-submit{grid-column:span 1}
+    }
+    @@media(max-width:560px){.vc-kpis{grid-template-columns:1fr}}
+</style>
+
+<div class="vc-head">
+    <div class="eb">QUẢN TRỊ</div>
+    <h1>Mã giảm giá</h1>
+    <p>Tạo mã khuyến mãi, theo dõi số lượt đã dùng, bật hoặc tắt từng mã, và chọn mã nào hiện ở trang Ưu đãi cho khách.</p>
+</div>
+
+@if (TempData["AdminMsg"] is string amsg)
+{
+    <div class="vc-msg">@amsg</div>
+}
+
+<div class="vc-kpis">
+    <div class="vc-kpi"><span>TỔNG SỐ MÃ</span><b>@total</b></div>
+    <div class="vc-kpi"><span>ĐANG CHẠY</span><b>@running</b></div>
+    <div class="vc-kpi"><span>ĐANG CÔNG KHAI</span><b>@publicRunning</b></div>
+    <div class="vc-kpi"><span>TỔNG LƯỢT ĐÃ DÙNG</span><b>@usedSum</b></div>
+</div>
+
+<details class="vc-new" @(total == 0 ? "open" : "")>
+    <summary>Tạo mã mới</summary>
+    <form asp-controller="Admin" asp-action="VoucherCreate" method="post" class="vc-form">
+        <div class="vc-f">
+            <label>MÃ (chữ và số, 3 đến 20 ký tự)</label>
+            <input type="text" name="code" maxlength="20" placeholder="VD: SINHVIEN20" required style="text-transform:uppercase" />
+        </div>
+        <div class="vc-f">
+            <label>LOẠI GIẢM</label>
+            <select name="type">
+                <option value="Percent">Theo phần trăm (%)</option>
+                <option value="Fixed">Số tiền cố định (đ)</option>
+            </select>
+        </div>
+        <div class="vc-f">
+            <label>GIÁ TRỊ GIẢM</label>
+            <input type="number" name="value" min="1" step="1" value="10" required />
+            <small>% (1 đến 100) hoặc số tiền (từ 1,000 đ)</small>
+        </div>
+        <div class="vc-f">
+            <label>GIẢM TỐI ĐA (đ), chỉ cho loại %</label>
+            <input type="number" name="maxDiscount" min="0" step="1000" value="50000" />
+            <small>0 = không giới hạn</small>
+        </div>
+        <div class="vc-f">
+            <label>ĐƠN TỐI THIỂU (đ)</label>
+            <input type="number" name="minOrder" min="0" step="1000" value="0" />
+            <small>0 = không yêu cầu</small>
+        </div>
+        <div class="vc-f">
+            <label>TỔNG SỐ LƯỢT DÙNG</label>
+            <input type="number" name="maxUses" min="0" step="1" value="100" />
+            <small>0 = không giới hạn</small>
+        </div>
+        <div class="vc-f">
+            <label>MỖI NGƯỜI DÙNG TỐI ĐA (lần)</label>
+            <input type="number" name="maxUsesPerUser" min="0" step="1" value="1" />
+            <small>0 = không giới hạn</small>
+        </div>
+        <div class="vc-f">
+            <label>TỪ NGÀY</label>
+            <input type="date" name="startDate" value="@today.ToString("yyyy-MM-dd")" required />
+        </div>
+        <div class="vc-f">
+            <label>ĐẾN HẾT NGÀY</label>
+            <input type="date" name="endDate" value="@today.AddDays(30).ToString("yyyy-MM-dd")" required />
+        </div>
+        <div class="vc-f wide">
+            <label>MÔ TẢ (chỉ quản trị xem, tối đa 200 ký tự)</label>
+            <input type="text" name="description" maxlength="200" placeholder="VD: Giảm 20% cho sinh viên tháng 11" />
+        </div>
+        <div class="vc-submit">
+            <button type="submit" class="a-btn">Tạo mã</button>
+        </div>
+    </form>
+</details>
+
+<div class="vc-bar" id="vc-chips">
+    @foreach (var c in chips)
+    {
+        <button type="button" class="vc-chip @(c.Key == "all" ? "active" : "")" data-key="@c.Key">@c.Label</button>
+    }
+</div>
+
+<div class="vc-card">
+    @if (Model.Count == 0)
+    {
+        <div class="vc-empty">Chưa có mã nào. Bấm "Tạo mã mới" ở trên để tạo mã đầu tiên.</div>
+    }
+    else
+    {
+        <div class="vc-wrap">
+            <table class="vc-table" id="vc-table">
+                <thead>
+                    <tr>
+                        <th>MÃ</th><th>MỨC GIẢM</th><th>ĐIỀU KIỆN</th><th>THỜI HẠN</th>
+                        <th>ĐÃ DÙNG</th><th>TRẠNG THÁI</th><th>CÔNG KHAI</th><th>THAO TÁC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var v in Model)
+                    {
+                        int pct = v.MaxUses > 0 ? Math.Min(100, (int)((long)v.Used * 100 / v.MaxUses)) : 0;
+                        <tr data-state="@StateKey(v)" data-private="@(v.IsPrivate ? 1 : 0)" data-public="@(v.IsPublic ? 1 : 0)">
+                            <td>
+                                <span class="vc-code">@v.Code</span>
+                                @if (!string.IsNullOrEmpty(v.Description)) { <small>@v.Description</small> }
+                            </td>
+                            <td class="vc-nw"><span class="vc-disc">@Discount(v)</span><small>@DiscountNote(v)</small></td>
+                            <td class="vc-nw">
+                                @(v.MinOrder > 0 ? $"Đơn từ {v.MinOrder:N0} đ" : "Không yêu cầu")
+                                <small>@(v.MaxUsesPerUser > 0 ? $"Mỗi người {v.MaxUsesPerUser} lần" : "Không giới hạn mỗi người")</small>
+                            </td>
+                            <td class="vc-nw">
+                                @v.StartsAt.AddHours(7).ToString("dd/MM/yyyy")
+                                <small>đến hết @v.EndsAt.AddHours(7).AddSeconds(-1).ToString("dd/MM/yyyy")</small>
+                            </td>
+                            <td class="vc-nw">
+                                @v.Used / @(v.MaxUses > 0 ? v.MaxUses.ToString() : "∞")
+                                @if (v.MaxUses > 0) { <div class="vc-meter"><i style="width:@pct%"></i></div> }
+                            </td>
+                            <td><span class="vc-b @BadgeClass(v)">@StatusText(v)</span></td>
+                            <td class="vc-nw">
+                                @if (v.IsPrivate)
+                                {
+                                    <span class="vc-b off">Mã riêng</span>
+                                    <small>Quà tặng, không công khai</small>
+                                }
+                                else
+                                {
+                                    <span class="vc-b @(v.IsPublic ? "ok" : "off")">@(v.IsPublic ? "Đang hiện" : "Đang ẩn")</span>
+                                    <small>@(v.IsPublic ? "Hiện ở trang Ưu đãi khi mã đang chạy" : "Khách phải tự biết mã")</small>
+                                }
+                            </td>
+                            <td>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                    <form asp-controller="Admin" asp-action="VoucherToggle" asp-route-id="@v.Id" method="post">
+                                        <button type="submit" class="vc-tbtn">@(v.IsActive ? "Tắt" : "Bật")</button>
+                                    </form>
+                                    @if (!v.IsPrivate)
+                                    {
+                                        <form asp-controller="Admin" asp-action="VoucherPublic" asp-route-id="@v.Id" method="post">
+                                            <button type="submit" class="vc-tbtn">@(v.IsPublic ? "Ẩn" : "Công khai")</button>
+                                        </form>
+                                    }
+                                    @if (v.Used == 0)
+                                    {
+                                        <form asp-controller="Admin" asp-action="VoucherDelete" asp-route-id="@v.Id" method="post"
+                                              onsubmit="return confirm('Xóa vĩnh viễn mã @v.Code? Không thể hoàn tác.');">
+                                            <button type="submit" class="vc-tbtn vc-del">Xóa</button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var chips = document.querySelectorAll('#vc-chips .vc-chip');
+            var rows = document.querySelectorAll('#vc-table tbody tr');
+
+            // Mặc định (Tất cả) ẩn mã riêng; chỉ chip "Mã riêng" mới hiện chúng
+            function apply(key) {
+                rows.forEach(function (r) {
+                    var priv = r.getAttribute('data-private') === '1';
+                    var pub = r.getAttribute('data-public') === '1';
+                    var st = r.getAttribute('data-state');
+                    var show;
+                    if (key === 'private') show = priv;
+                    else if (priv) show = false;
+                    else if (key === 'all') show = true;
+                    else if (key === 'public') show = pub;
+                    else show = st === key;
+                    r.style.display = show ? '' : 'none';
+                });
+            }
+
+            chips.forEach(function (c) {
+                c.addEventListener('click', function () {
+                    chips.forEach(function (x) { x.classList.remove('active'); });
+                    c.classList.add('active');
+                    apply(c.getAttribute('data-key'));
+                });
+            });
+
+            apply('all');
+        })();
+    </script>
+}

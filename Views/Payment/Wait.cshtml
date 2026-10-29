@@ -1,0 +1,211 @@
+@using CinemaApp.Models
+@model CinemaApp.Models.Booking
+@{
+    ViewData["Title"] = "Chờ xác nhận thanh toán";
+    ViewData["Dark"] = true;
+    var st = Model.Showtime;
+    var start = st.StartTime.AddHours(7);
+    bool waiting = Model.Status == "WaitingPayment";
+    bool transfer = Model.PaymentMethod == "Transfer";
+    int left = waiting ? (int)Math.Max(0, (Model.ExpiresAt - DateTime.UtcNow).TotalSeconds) : 0;
+    decimal amount = ViewBag.Amount;
+    string? qrUrl = ViewBag.QrUrl as string;
+    bool simOn = ViewBag.SimOn == true;
+    var deadlineLocal = Model.ExpiresAt.AddHours(7);
+    var labels = Model.Seats
+        .OrderBy(x => x.Seat.RowLabel).ThenBy(x => x.Seat.SeatNumber)
+        .Select(x => x.Seat.RowLabel + x.Seat.SeatNumber).ToList();
+    var ticketGroups = Model.Seats
+        .GroupBy(x => TicketPricing.Get(x.TicketType).Name)
+        .Select(g => $"{g.Count()} × {g.Key}").ToList();
+}
+
+<style>
+    .a-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .a-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .a-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 0;color:var(--a-text)}
+    .a-alert{margin:16px 48px 0;padding:12px 16px;border:1px solid var(--a-wine);border-left:4px solid var(--a-wine);border-radius:4px;background:var(--a-bg2);color:#ffd9de;font-size:14px}
+    .a-rv{display:grid;grid-template-columns:minmax(0,1fr) 360px;max-width:1000px;margin:32px auto 0;background:var(--a-bg2);border:1px solid var(--a-gold);border-radius:8px;position:relative;box-shadow:0 20px 60px rgba(230,162,60,.15)}
+    .a-rv::before,.a-rv::after{content:"";position:absolute;right:352px;width:16px;height:16px;border-radius:50%;background:#0e0c0a;border:1px solid var(--a-gold)}
+    .a-rv::before{top:-9px}
+    .a-rv::after{bottom:-9px}
+    .a-rvmain{padding:26px 28px}
+    .a-rvmain h3{margin:0 0 16px;font-size:20px;color:var(--a-gold)}
+    .a-rvfacts{display:grid;grid-template-columns:120px 1fr;gap:10px 16px;font-size:14px;margin:0}
+    .a-rvfacts dt{color:var(--a-mute);font-weight:400}
+    .a-rvfacts dd{margin:0;color:var(--a-text)}
+    .a-chipseat{display:inline-block;border:1px solid var(--a-gold);color:var(--a-gold);border-radius:4px;padding:2px 9px;font-size:12px;margin:0 6px 4px 0}
+    .a-rvtotal{color:var(--a-gold);font-size:24px}
+    .a-disc{color:#7ee2a0}
+    .a-rvside{padding:26px 24px;border-left:2px dashed #6b5a3a;display:flex;flex-direction:column;gap:10px;text-align:center}
+    .a-timerlabel{font-size:12px;color:var(--a-mute)}
+    .a-timer{font-size:38px;font-weight:800;letter-spacing:2px;color:var(--a-text);margin:0}
+    .a-timer.warn{color:#ffb74d}
+    .a-timer.over{color:#ff6b7d}
+    .a-code{font-size:28px;font-weight:800;letter-spacing:4px;color:var(--a-gold);border:2px dashed var(--a-gold);border-radius:6px;padding:12px 8px;word-break:break-all}
+    .a-qr{width:100%;max-width:260px;margin:0 auto;display:block;background:#fff;padding:10px;border-radius:8px}
+    .a-bank{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px;text-align:left;margin:0;padding:12px 0;border-top:1px dashed var(--a-line);border-bottom:1px dashed var(--a-line)}
+    .a-bank dt{color:var(--a-mute);font-weight:400}
+    .a-bank dd{margin:0;color:var(--a-text);text-align:right;word-break:break-all}
+    .a-block{display:block;width:100%;text-align:center}
+    .a-rvside button:disabled{opacity:.4;cursor:not-allowed}
+    @@media(max-width:900px){
+        .a-pghead{padding:24px 16px 16px}
+        .a-alert{margin:16px 16px 0}
+        .a-rv{grid-template-columns:1fr;margin:24px 16px 0}
+        .a-rv::before,.a-rv::after{display:none}
+        .a-rvside{border-left:0;border-top:2px dashed #6b5a3a}
+        .a-rvfacts{grid-template-columns:100px 1fr}
+    }
+</style>
+
+<div class="a-pghead">
+    <div class="eb">BƯỚC 5 · @(transfer ? "CHUYỂN KHOẢN" : "THANH TOÁN TẠI QUẦY")</div>
+    <h1>@st.Movie.Title</h1>
+</div>
+
+@if (TempData["PayErr"] is string perr)
+{
+    <div class="a-alert">@perr</div>
+}
+
+@if (!waiting)
+{
+    <div class="a-alert">
+        Đơn đã hết hạn và ghế đã được nhả. Nếu bạn đã chuyển khoản, vui lòng liên hệ rạp để được hoàn tiền.
+        <a href="/Booking/Seats/@Model.ShowtimeId">Chọn lại ghế</a>.
+    </div>
+}
+
+<div class="a-rv">
+    <div class="a-rvmain">
+        <h3>@(waiting ? "Đơn đang chờ xác nhận" : "Đơn đã hết hạn")</h3>
+        <dl class="a-rvfacts">
+            <dt>Rạp</dt><dd>@st.Room.Cinema.Name</dd>
+            <dt>Suất chiếu</dt><dd>@start.ToString("HH:mm") · @start.ToString("dd/MM/yyyy")</dd>
+            <dt>Phòng</dt><dd>@st.Room.Name (@st.Room.Type) · @st.Format · @st.LanguageMode</dd>
+            <dt>Ghế</dt>
+            <dd>@foreach (var l in labels) { <span class="a-chipseat">@l</span> }</dd>
+            <dt>Loại vé</dt><dd>@string.Join(", ", ticketGroups)</dd>
+            <dt>Mã đặt vé</dt><dd><b>@Model.Code</b></dd>
+            <dt>Hạn</dt><dd>@deadlineLocal.ToString("HH:mm dd/MM/yyyy")</dd>
+            <dt>Tiền vé</dt><dd>@Model.Seats.Sum(s => s.Price).ToString("N0") đ</dd>
+            <dt>Tiền bắp nước</dt><dd>@Model.Items.Sum(i => i.UnitPrice * i.Quantity).ToString("N0") đ</dd>
+            @if (Model.MemberDiscount > 0)
+            {
+                <dt>Ưu đãi hạng</dt><dd class="a-disc">− @Model.MemberDiscount.ToString("N0") đ (hạng @Model.MemberTierName, giảm bắp nước)</dd>
+            }
+            @if (Model.DiscountAmount > 0)
+            {
+                <dt>Giảm giá</dt><dd class="a-disc">− @Model.DiscountAmount.ToString("N0") đ (mã @Model.VoucherCode)</dd>
+            }
+            <dt>Tổng cộng</dt><dd><b class="a-rvtotal">@amount.ToString("N0") đ</b></dd>
+        </dl>
+    </div>
+
+    <div class="a-rvside">
+        @if (waiting)
+        {
+            <div class="a-timerlabel">@(transfer ? "Hạn chuyển khoản còn lại" : "Hạn đến quầy còn lại")</div>
+            <div class="a-timer" id="pg-count" data-left="@left" data-id="@Model.Id">--:--</div>
+
+            @if (transfer)
+            {
+                @if (qrUrl != null)
+                {
+                    <div class="a-timerlabel">Mã QR thanh toán ngân hàng (<b>không phải vé vào rạp</b>)</div>
+                    <img src="@qrUrl" class="a-qr" alt="Mã QR chuyển khoản" />
+                }
+                else
+                {
+                    <div class="a-alert" style="margin:0">Chưa tạo được mã QR. Hãy chuyển khoản thủ công theo thông tin dưới đây.</div>
+                }
+                <dl class="a-bank">
+                    <dt>Ngân hàng</dt><dd>@ViewBag.BankName</dd>
+                    <dt>Số tài khoản</dt><dd>@ViewBag.AccountNo</dd>
+                    <dt>Chủ tài khoản</dt><dd>@ViewBag.AccountName</dd>
+                    <dt>Số tiền</dt><dd>@amount.ToString("N0") đ</dd>
+                    <dt>Nội dung</dt><dd><b>@Model.Code</b></dd>
+                </dl>
+                <p class="a-timerlabel" style="margin:0">
+                    Chuyển <b>đúng số tiền</b> và <b>đúng nội dung</b>. Rạp xác nhận bằng tay sau khi nhận được tiền, trang này tự chuyển khi xong. Vé xem phim chỉ có sau khi rạp xác nhận.
+                </p>
+            }
+            else
+            {
+                <div class="a-timerlabel">Mã đặt vé của bạn</div>
+                <div class="a-code">@Model.Code</div>
+                <p class="a-timerlabel" style="margin:0">
+                    Đến quầy trước <b>@deadlineLocal.ToString("HH:mm")</b>, đọc mã này và thanh toán <b>@amount.ToString("N0") đ</b>.
+                    Quá hạn đơn bị hủy.
+                </p>
+            }
+
+            @if (simOn)
+            {
+                <form asp-action="Confirm" asp-route-id="@Model.Id" method="post">
+                    <input type="hidden" name="method" value="@Model.PaymentMethod" />
+                    <input type="hidden" name="agree" value="1" />
+                    <button type="submit" name="outcome" value="success" class="a-btn ghost a-block" style="padding:8px">Giả lập: đã nhận tiền (máy phát triển)</button>
+                </form>
+            }
+
+            <form asp-action="CancelWaiting" asp-route-id="@Model.Id" method="post" data-confirm="@(transfer ? "Bạn CHƯA chuyển khoản cho đơn này và muốn hủy đơn? Nếu đã chuyển tiền, hãy bấm Hủy bỏ rồi chờ rạp xác nhận." : "")">
+                @if (transfer) { <input type="hidden" name="notPaid" value="1" /> }
+                <button type="submit" class="a-btn ghost a-block" style="padding:8px">Hủy đơn, chọn lại ghế</button>
+            </form>
+        }
+        else
+        {
+            <div class="a-timerlabel">Đơn không còn hiệu lực</div>
+            <a href="/Booking/Seats/@Model.ShowtimeId" class="a-btn a-block">Chọn lại ghế</a>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var el = document.getElementById('pg-count');
+            if (!el) return;
+            var left = parseInt(el.getAttribute('data-left'), 10) || 0;
+            var id = el.getAttribute('data-id');
+            function two(n) { return (n < 10 ? '0' : '') + n; }
+            function tick() {
+                if (left <= 0) {
+                    el.textContent = '00:00';
+                    el.classList.add('over');
+                    setTimeout(function () { location.reload(); }, 2000);
+                    return;
+                }
+                el.textContent = two(Math.floor(left / 60)) + ':' + two(left % 60);
+                if (left <= 60) el.classList.add('warn');
+                left--;
+                setTimeout(tick, 1000);
+            }
+            tick();
+
+            // Hỏi trạng thái mỗi 8 giây: được duyệt thì chuyển sang trang kết quả
+            setInterval(function () {
+                fetch('/Payment/Status/' + id, { credentials: 'same-origin' })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (d) {
+                        if (!d) return;
+                        if (d.status === 'Paid') location.href = '/Payment/Done/' + id;
+                        else if (d.status !== 'WaitingPayment') location.reload();
+                    })
+                    .catch(function () { });
+            }, 8000);
+
+            document.querySelectorAll('form').forEach(function (f) {
+                f.addEventListener('submit', function (e) {
+                    var msg = f.getAttribute('data-confirm');
+                    if (msg && !confirm(msg)) { e.preventDefault(); return; }
+                    setTimeout(function () {
+                        f.querySelectorAll('button[type=submit]').forEach(function (b) { b.disabled = true; });
+                    }, 0);
+                });
+            });
+        })();
+    </script>
+}

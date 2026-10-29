@@ -1,0 +1,16 @@
+@model CinemaApp.Models.Movie
+
+<article class="st-card st-tilt">
+    <a href="/Movies/Details/@Model.Id" class="st-poster">
+        <img src="@Model.PosterUrl" alt="@Model.Title" loading="lazy" />
+        <span class="st-age @Model.AgeRating">@Model.AgeRating</span>
+        <span class="st-shine"></span>
+    </a>
+    <div class="st-card-body">
+        <h3 title="@Model.Title"><a href="/Movies/Details/@Model.Id">@Model.Title</a></h3>
+        <div class="st-meta">
+            @(Model.DurationMin > 0 ? $"{Model.DurationMin} phút" : "Đang cập nhật") · @Model.ReleaseDate.ToString("dd/MM/yyyy")
+        </div>
+        <a href="/Movies/Details/@Model.Id#lich-chieu" class="st-buy">Mua vé</a>
+    </div>
+</article>

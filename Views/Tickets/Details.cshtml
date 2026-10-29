@@ -1,0 +1,163 @@
+@using CinemaApp.Models
+@model CinemaApp.Models.Booking
+@{
+    ViewData["Title"] = "Vé " + Model.Code;
+    ViewData["Dark"] = true;
+    var st = Model.Showtime;
+    var start = st.StartTime.AddHours(7);
+    bool past = st.StartTime < DateTime.UtcNow;
+    string? qrUrl = ViewBag.QrUrl as string;
+    var seats = Model.Seats
+        .OrderBy(x => x.Seat.RowLabel).ThenBy(x => x.Seat.SeatNumber).ToList();
+    bool hasChild = seats.Any(x => x.TicketType == "Child");
+    string method = Model.PaymentMethod switch
+    {
+        "Card" => "Thẻ ATM / Visa (giả lập)",
+        "Wallet" => "Ví điện tử (giả lập)",
+        "QR" or "Transfer" => "Chuyển khoản QR",
+        "Cash" => "Tiền mặt tại quầy",
+        _ => Model.PaymentMethod ?? ""
+    };
+}
+
+<style>
+    .a-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .a-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .a-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 4px;color:var(--a-text)}
+    .a-pghead p{margin:0;font-size:14px}
+    .a-rv{display:grid;grid-template-columns:minmax(0,1fr) 320px;max-width:1000px;margin:32px auto 0;background:var(--a-bg2);border:1px solid var(--a-gold);border-radius:8px;position:relative;box-shadow:0 20px 60px rgba(230,162,60,.18)}
+    .a-rv::before,.a-rv::after{content:"";position:absolute;right:312px;width:16px;height:16px;border-radius:50%;background:#0e0c0a;border:1px solid var(--a-gold)}
+    .a-rv::before{top:-9px}
+    .a-rv::after{bottom:-9px}
+    .a-rvmain{padding:26px 28px}
+    .a-rvmain h3{margin:0 0 16px;font-size:20px;color:var(--a-gold)}
+    .a-rvfacts{display:grid;grid-template-columns:130px 1fr;gap:10px 16px;font-size:14px;margin:0}
+    .a-rvfacts dt{color:var(--a-mute);font-weight:400}
+    .a-rvfacts dd{margin:0;color:var(--a-text)}
+    .a-chipseat{display:inline-block;border:1px solid var(--a-gold);color:var(--a-gold);border-radius:4px;padding:2px 9px;font-size:12px;margin:0 6px 4px 0}
+    .a-chipseat.child{border-color:#ff9aa6;color:#ff9aa6}
+    .a-muted{color:var(--a-mute)}
+    .a-rvtotal{color:var(--a-gold);font-size:24px}
+    .a-note{margin-top:18px;padding:12px 14px;border:1px solid #6b5a3a;border-left:4px solid var(--a-gold);border-radius:4px;font-size:12px;color:#d8cfbf}
+    .a-rvside{padding:26px 24px;border-left:2px dashed #6b5a3a;display:flex;flex-direction:column;gap:10px;text-align:center;justify-content:center}
+    .a-timerlabel{font-size:12px;color:var(--a-mute)}
+    .a-code{font-size:21px;font-weight:800;letter-spacing:2px;color:var(--a-gold);border:2px dashed var(--a-gold);border-radius:6px;padding:12px 8px;word-break:break-all}
+    .a-qr{width:100%;max-width:240px;margin:0 auto;display:block;background:#fff;padding:10px;border-radius:8px}
+    .a-block{display:block;width:100%;text-align:center}
+    @@media(max-width:900px){
+        .a-pghead{padding:24px 16px 16px}
+        .a-rv{grid-template-columns:1fr;margin:24px 16px 0}
+        .a-rv::before,.a-rv::after{display:none}
+        .a-rvside{border-left:0;border-top:2px dashed #6b5a3a}
+        .a-rvfacts{grid-template-columns:100px 1fr}
+    }
+    @@media print{
+        body.st{background:#fff!important;color:#000!important}
+        .a-topbar,.st-nav,.a-foot,.a-pghead,.no-print,footer{display:none!important}
+        .a-rv{box-shadow:none;border:1px solid #000;background:#fff;margin:0 auto}
+        .a-rv *{color:#000!important;border-color:#000!important}
+        .a-rv::before,.a-rv::after{display:none}
+    }
+</style>
+
+<div class="a-pghead no-print">
+    <div class="eb">VÉ CỦA TÔI</div>
+    <h1>@st.Movie.Title</h1>
+    <p><a href="/Tickets">← Tất cả vé</a></p>
+</div>
+
+@if (TempData["TkMsg"] is string tkmsg)
+{
+    <div class="a-note no-print" style="max-width:1000px;margin:20px auto 0">@tkmsg</div>
+}
+
+<div class="a-rv">
+    <div class="a-rvmain">
+        <h3>@(past ? "Vé đã chiếu" : "Vé hợp lệ")</h3>
+        <dl class="a-rvfacts">
+            <dt>Phim</dt><dd>@st.Movie.Title</dd>
+            <dt>Phân loại</dt><dd>@AgeRatings.Describe(st.Movie.AgeRating)</dd>
+            <dt>Rạp</dt><dd>@st.Room.Cinema.Name</dd>
+            <dt>Suất chiếu</dt><dd>@start.ToString("HH:mm") · @start.ToString("dd/MM/yyyy")</dd>
+            <dt>Phòng</dt><dd>@st.Room.Name (@st.Room.Type) · @st.Format · @st.LanguageMode</dd>
+            <dt>Ghế và loại vé</dt>
+            <dd>
+                @foreach (var s in seats)
+                {
+                    <span class="a-chipseat @(s.TicketType == "Child" ? "child" : "")">@(s.Seat.RowLabel + s.Seat.SeatNumber) · @TicketPricing.Get(s.TicketType).Name</span>
+                }
+            </dd>
+            <dt>Bắp nước</dt>
+            <dd>
+                @if (Model.Items.Count > 0)
+                {
+                    foreach (var i in Model.Items) { <div>@i.Quantity × @i.Product.Name</div> }
+                }
+                else { <span class="a-muted">Không chọn</span> }
+            </dd>
+            <dt>Thanh toán</dt><dd>@method @(Model.PaidAt.HasValue ? "· " + Model.PaidAt.Value.AddHours(7).ToString("HH:mm dd/MM/yyyy") : "")</dd>
+            <dt>Tiền vé</dt><dd>@seats.Sum(x => x.Price).ToString("N0") đ</dd>
+            <dt>Tiền bắp nước</dt><dd>@Model.Items.Sum(i => i.UnitPrice * i.Quantity).ToString("N0") đ</dd>
+            @if (Model.MemberDiscount > 0)
+            {
+                <dt>Ưu đãi hạng</dt><dd style="color:#7ee2a0">− @Model.MemberDiscount.ToString("N0") đ (hạng @Model.MemberTierName, giảm bắp nước)</dd>
+            }
+            @if (Model.DiscountAmount > 0)
+            {
+                <dt>Giảm giá</dt><dd style="color:#7ee2a0">− @Model.DiscountAmount.ToString("N0") đ (mã @Model.VoucherCode)</dd>
+            }
+            <dt>Tổng cộng</dt><dd><b class="a-rvtotal">@Model.Total.ToString("N0") đ</b></dd>
+        </dl>
+        @{
+            bool canCancel = ViewBag.CanRequestCancel == true;
+            int cancelHours = ViewBag.CancelHours is int ch ? ch : 2;
+        }
+        @if (Model.CancelRequestedAt.HasValue)
+        {
+            <div class="a-note no-print" style="border-left-color:#ffd27a">
+                <b>Đã gửi yêu cầu hủy vé</b> lúc @Model.CancelRequestedAt.Value.AddHours(7).ToString("HH:mm dd/MM/yyyy").
+                Lý do: @Model.CancelRequestReason<br />
+                Rạp sẽ xem xét và chuyển trả tiền cho bạn nếu chấp nhận. Trong lúc chờ, vé vẫn dùng được.
+                @if (!past && Model.CheckedInAt == null)
+                {
+                    <form method="post" action="/Tickets/WithdrawCancel/@Model.Id" style="margin-top:10px">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="a-btn ghost" style="padding:6px 14px;font-size:13px">Rút lại yêu cầu</button>
+                    </form>
+                }
+            </div>
+        }
+        else if (canCancel)
+        {
+            <form method="post" action="/Tickets/RequestCancel/@Model.Id" class="a-note no-print"
+                  onsubmit="return confirm('Gửi yêu cầu hủy vé @Model.Code? Rạp sẽ xem xét và chuyển trả tiền cho bạn nếu chấp nhận.');">
+                @Html.AntiForgeryToken()
+                <b>Muốn hủy vé?</b> Bạn có thể gửi yêu cầu hủy trước giờ chiếu ít nhất @cancelHours giờ.<br />
+                <textarea name="reason" required minlength="3" maxlength="200" rows="2" placeholder="Lý do hủy vé (bắt buộc)"
+                          style="width:100%;margin:8px 0;background:#14100c;color:var(--a-text);border:1px solid #6b5a3a;border-radius:8px;padding:8px 10px"></textarea>
+                <button type="submit" class="a-btn ghost" style="padding:6px 14px;font-size:13px">Gửi yêu cầu hủy vé</button>
+            </form>
+        }
+        else if (!past && Model.CheckedInAt == null)
+        {
+            <div class="a-note no-print">Vé này đã quá hạn hủy (chỉ hủy được trước giờ chiếu ít nhất @cancelHours giờ). Cần hỗ trợ, vui lòng liên hệ rạp.</div>
+        }
+        @if (hasChild)
+        {
+            <div class="a-note">
+                Vé trẻ em chỉ dành cho trẻ em dưới 13 tuổi đi cùng người lớn. Nhân viên có thể kiểm tra khi vào rạp;
+                nếu không đúng đối tượng sẽ phải trả chênh lệch giá vé.
+            </div>
+        }
+    </div>
+    <div class="a-rvside">
+        <div class="a-timerlabel">Mã đặt vé</div>
+        <div class="a-code">@Model.Code</div>
+        @if (qrUrl != null)
+        {
+            <img src="@qrUrl" class="a-qr" alt="Mã QR của vé" />
+        }
+        <p class="a-timerlabel" style="margin:0 0 6px">Đưa mã QR hoặc mã đặt vé cho nhân viên khi vào rạp.</p>
+        <button type="button" class="a-btn ghost a-block no-print" onclick="window.print()">In vé</button>
+    </div>
+</div>

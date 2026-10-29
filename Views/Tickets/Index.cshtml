@@ -1,0 +1,129 @@
+@using CinemaApp.Controllers
+@model List<TicketRow>
+@{
+    ViewData["Title"] = "Vé của tôi";
+    ViewData["Dark"] = true;
+    var now = DateTime.UtcNow;
+    var waiting = Model.Where(r => r.Status == "WaitingPayment").ToList();
+    var upcoming = Model.Where(r => r.Status == "Paid" && r.Start >= now).OrderBy(r => r.Start).ToList();
+    var past = Model.Where(r => r.Status == "Paid" && r.Start < now).ToList();
+    var refunded = Model.Where(r => r.Status == "Refunded").ToList();
+}
+
+<style>
+    .a-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .a-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .a-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 4px;color:var(--a-text)}
+    .a-pghead p{color:var(--a-mute);margin:0;font-size:14px}
+    .a-empty{margin:28px 48px 0;padding:30px;border:1px dashed #6b5a3a;border-radius:6px;color:var(--a-mute);text-align:center}
+    .a-tkgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:18px}
+    .a-tk{display:grid;grid-template-columns:96px 1fr;gap:16px;padding:14px;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:6px;position:relative;transition:border-color .2s,transform .2s}
+    .a-tk:hover{border-color:var(--a-gold);transform:translateY(-3px)}
+    .a-tk img{width:96px;aspect-ratio:2/3;object-fit:cover;border-radius:4px;display:block}
+    .a-tk h4{margin:0 0 4px;font-size:16px;color:var(--a-text)}
+    .a-tk .m{font-size:13px;color:var(--a-mute);margin-bottom:2px}
+    .a-tk .c{display:inline-block;margin:8px 0 10px;border:1px dashed var(--a-gold);color:var(--a-gold);border-radius:4px;padding:3px 10px;font-size:13px;letter-spacing:2px;font-weight:700}
+    .a-tk.past{opacity:.6}
+    .a-tkh{margin:34px 0 0}
+    @@media(max-width:900px){
+        .a-pghead{padding:24px 16px 16px}
+        .a-empty{margin:20px 16px 0}
+        .a-tkgrid{grid-template-columns:1fr}
+    }
+</style>
+
+<div class="a-pghead">
+    <div class="eb">TÀI KHOẢN</div>
+    <h1>Vé của tôi</h1>
+    <p>Vé đã mua, đơn đang chờ thanh toán và lịch sử xem phim của bạn.</p>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="a-empty">
+        Bạn chưa có vé nào. <a href="/Movies?status=NowShowing">Chọn phim đang chiếu</a>.
+    </div>
+}
+
+<div class="a-sec" style="padding-top:8px">
+@if (waiting.Count > 0)
+{
+    <h2 class="a-h a-tkh">Đang chờ thanh toán</h2>
+    <div class="a-tkgrid">
+        @foreach (var r in waiting)
+        {
+            <div class="a-tk">
+                <img src="@r.Poster" alt="@r.Title" loading="lazy" />
+                <div>
+                    <h4>@r.Title</h4>
+                    <div class="m">@r.Cinema</div>
+                    <div class="m">@r.Start.AddHours(7).ToString("HH:mm dd/MM/yyyy") · @r.Seats ghế · @r.Total.ToString("N0")đ</div>
+                    <div class="c">@r.Code</div><br />
+                    <a href="/Payment/Wait/@r.Id" class="a-btn" style="padding:7px 16px;font-size:13px">Xem hướng dẫn thanh toán</a>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (upcoming.Count > 0)
+{
+    <h2 class="a-h a-tkh">Sắp chiếu</h2>
+    <div class="a-tkgrid">
+        @foreach (var r in upcoming)
+        {
+            <div class="a-tk">
+                <img src="@r.Poster" alt="@r.Title" loading="lazy" />
+                <div>
+                    <h4>@r.Title</h4>
+                    <div class="m">@r.Cinema</div>
+                    <div class="m">@r.Start.AddHours(7).ToString("HH:mm dd/MM/yyyy") · @r.Seats ghế · @r.Total.ToString("N0")đ</div>
+                    <div class="c">@r.Code</div><br />
+                    <a href="/Tickets/Details/@r.Id" class="a-btn" style="padding:7px 16px;font-size:13px">Xem vé và mã QR</a>
+                    @if (r.CancelRequested) { <div class="m" style="color:#ffd27a;margin-top:8px">Đã gửi yêu cầu hủy, chờ rạp xử lý.</div> }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (refunded.Count > 0)
+{
+    <h2 class="a-h a-tkh">Đã hoàn tiền</h2>
+    <div class="a-tkgrid">
+        @foreach (var r in refunded)
+        {
+            <div class="a-tk past">
+                <img src="@r.Poster" alt="@r.Title" loading="lazy" />
+                <div>
+                    <h4>@r.Title</h4>
+                    <div class="m">@r.Cinema</div>
+                    <div class="m">@r.Start.AddHours(7).ToString("HH:mm dd/MM/yyyy") · @r.Total.ToString("N0")đ</div>
+                    <div class="c">@r.Code</div><br />
+                    <span class="m">Vé đã được hoàn tiền, không còn hiệu lực. Rạp sẽ chuyển trả tiền cho bạn.</span>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (past.Count > 0)
+{
+    <h2 class="a-h a-tkh">Đã chiếu</h2>
+    <div class="a-tkgrid">
+        @foreach (var r in past)
+        {
+            <div class="a-tk past">
+                <img src="@r.Poster" alt="@r.Title" loading="lazy" />
+                <div>
+                    <h4>@r.Title</h4>
+                    <div class="m">@r.Cinema</div>
+                    <div class="m">@r.Start.AddHours(7).ToString("HH:mm dd/MM/yyyy") · @r.Seats ghế · @r.Total.ToString("N0")đ</div>
+                    <div class="c">@r.Code</div><br />
+                    <a href="/Tickets/Details/@r.Id" class="a-btn ghost" style="padding:7px 16px;font-size:13px">Xem lại vé</a>
+                </div>
+            </div>
+        }
+    </div>
+}
+</div>

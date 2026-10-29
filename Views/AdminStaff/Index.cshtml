@@ -1,0 +1,101 @@
+@using CinemaApp.Controllers
+@using CinemaApp.Models
+@model List<StaffRow>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Nhân viên";
+    ViewData["Dark"] = true;
+    var cinemas = (List<Cinema>)ViewBag.Cinemas;
+}
+
+<style>
+    .adstaff-head{margin:0 0 20px}
+    .adstaff-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .adstaff-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .adstaff-head p{margin:0;color:var(--a-mute);font-size:14px}
+    .adstaff-msg{margin:0 0 16px;padding:12px 16px;border:1px solid var(--a-gold);border-left:4px solid var(--a-gold);border-radius:6px;background:var(--a-bg2);color:var(--a-text);font-size:14px}
+    .adstaff-form{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;width:100%;box-sizing:border-box;margin:0 0 20px;padding:18px 20px;border:1px solid var(--a-line);border-radius:12px;background:var(--a-bg2)}
+    .adstaff-form label{display:block;font-size:12px;letter-spacing:1px;color:var(--a-mute);margin-bottom:6px}
+    .adstaff-form input,.adstaff-form select{background:#14100c;color:var(--a-text);border:1px solid #6b5a3a;border-radius:10px;padding:11px 14px;font-size:14px;min-width:240px}
+    .adstaff-form input:focus,.adstaff-form select:focus{outline:none;border-color:var(--a-gold)}
+    .adstaff-card{display:block;width:100%;max-width:none;box-sizing:border-box;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;overflow:hidden}
+    .adstaff-wrap{overflow-x:auto}
+    .adstaff-table{width:100%;min-width:700px;border-collapse:collapse;font-size:14px}
+    .adstaff-table th{text-align:left;font-size:11px;letter-spacing:1px;color:var(--a-mute);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--a-line);background:rgba(0,0,0,.2);white-space:nowrap}
+    .adstaff-table td{padding:13px 14px;border-bottom:1px solid var(--a-line);color:var(--a-text);vertical-align:middle}
+    .adstaff-table tr:last-child td{border-bottom:0}
+    .adstaff-mut{color:var(--a-mute)}
+    .adstaff-empty{padding:40px 16px;text-align:center;color:var(--a-mute);font-size:14px}
+    .adstaff-btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;border:1px solid #8f2a3a;background:none;color:#ff8f9d}
+    .adstaff-btn:hover{background:rgba(164,19,43,.15)}
+    .adstaff-note{margin:0 0 18px;padding:12px 16px;border:1px dashed #6b5a3a;border-radius:8px;background:rgba(230,162,60,.06);color:#e9d9b8;font-size:13px;line-height:1.55}
+</style>
+
+<div class="adstaff-head">
+    <div class="eb">QUẢN TRỊ</div>
+    <h1>Nhân viên rạp</h1>
+    <p>Nhân viên chỉ được quét vé và chỉ cho vào vé của đúng rạp được gán. Không xem được doanh thu, không duyệt tiền hay hoàn tiền.</p>
+</div>
+
+@if (TempData["AdminMsg"] is string amsg)
+{
+    <div class="adstaff-msg">@amsg</div>
+}
+
+<div class="adstaff-note">
+    Nhân viên cần <b>đăng ký tài khoản và xác nhận email</b> trước. Sau đó bạn nhập đúng email đó, chọn rạp rồi bấm Lưu.
+    Nhập lại email của người đã là nhân viên để <b>đổi rạp</b>. Sau khi thay đổi, người đó sẽ phải đăng nhập lại.
+</div>
+
+<form method="post" action="/Admin/Staff/Save" class="adstaff-form">
+    @Html.AntiForgeryToken()
+    <div>
+        <label for="stf-email">EMAIL TÀI KHOẢN</label>
+        <input id="stf-email" type="email" name="email" required maxlength="200" placeholder="nhanvien@gmail.com" autocomplete="off" />
+    </div>
+    <div>
+        <label for="stf-cinema">RẠP ĐƯỢC GÁN</label>
+        <select id="stf-cinema" name="cinemaId">
+            @foreach (var c in cinemas)
+            {
+                <option value="@c.Id">@c.Name (@c.City.Name)</option>
+            }
+        </select>
+    </div>
+    <button type="submit" class="a-btn" style="padding:11px 24px">Lưu nhân viên</button>
+</form>
+
+<div class="adstaff-card">
+    @if (Model.Count == 0)
+    {
+        <div class="adstaff-empty">Chưa có nhân viên nào.</div>
+    }
+    else
+    {
+        <div class="adstaff-wrap">
+            <table class="adstaff-table">
+                <thead>
+                    <tr><th>EMAIL</th><th>HỌ TÊN</th><th>RẠP ĐƯỢC GÁN</th><th>THAO TÁC</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        <tr>
+                            <td>@r.Email</td>
+                            <td class="adstaff-mut">@(string.IsNullOrEmpty(r.FullName) ? "-" : r.FullName)</td>
+                            <td>@(r.CinemaName ?? "Chưa gán rạp")</td>
+                            <td>
+                                <form method="post" action="/Admin/Staff/Remove" style="margin:0"
+                                      onsubmit="return confirm('Gỡ quyền nhân viên của @r.Email?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="adstaff-btn">Gỡ quyền</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

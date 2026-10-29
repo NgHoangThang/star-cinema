@@ -1,0 +1,34 @@
+@{
+    int code = ViewBag.Code is int c ? c : 404;
+    string title = code == 404 ? "Không tìm thấy trang"
+                 : code == 403 ? "Bạn không có quyền vào đây"
+                 : code == 401 ? "Cần đăng nhập"
+                 : "Có lỗi xảy ra";
+    string text = code == 404 ? "Trang bạn tìm không tồn tại, đã bị xóa hoặc địa chỉ bị gõ sai. Hãy quay lại trang chủ để tìm phim bạn muốn xem."
+                : code == 403 ? "Tài khoản của bạn không được phép xem trang này."
+                : code == 401 ? "Vui lòng đăng nhập để tiếp tục."
+                : "Rạp đang gặp sự cố. Bạn hãy thử lại sau ít phút.";
+    ViewData["Title"] = title;
+    ViewData["Dark"] = true;
+}
+
+<style>
+    .a-err{min-height:calc(100vh - 260px);display:flex;align-items:center;justify-content:center;padding:40px 16px;background:radial-gradient(ellipse at 50% 0%,#2b2013 0%,#0e0c0a 65%)}
+    .a-errbox{max-width:620px;text-align:center}
+    .a-errcode{font-size:clamp(70px,16vw,130px);font-weight:800;line-height:1;background:linear-gradient(180deg,#ffd27a,#c9861d);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:6px}
+    .a-errbox h1{font-size:clamp(22px,4vw,30px);font-weight:800;margin:10px 0 8px;color:var(--a-text)}
+    .a-errbox p{color:var(--a-mute);font-size:15px;margin:0 0 22px}
+    .a-errbtns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+</style>
+
+<div class="a-err">
+    <div class="a-errbox">
+        <div class="a-errcode">@code</div>
+        <h1>@title</h1>
+        <p>@text</p>
+        <div class="a-errbtns">
+            <a href="/" class="a-btn">Về trang chủ</a>
+            <a href="/Movies?status=NowShowing" class="a-btn ghost">Xem phim đang chiếu</a>
+        </div>
+    </div>
+</div>

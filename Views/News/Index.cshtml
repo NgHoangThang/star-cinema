@@ -1,0 +1,96 @@
+@using CinemaApp.Controllers
+@model NewsListView
+@{
+    ViewData["Title"] = "Tin tức";
+    ViewData["Dark"] = true;
+
+    string PageUrl(int p) => "/News?page=" + p
+        + (Model.Category != null ? "&category=" + Uri.EscapeDataString(Model.Category) : "");
+}
+
+<style>
+    .nw-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .nw-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .nw-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 4px;color:var(--a-text)}
+    .nw-pghead p{margin:0;font-size:14px;color:var(--a-mute)}
+    .nw-wrap{max-width:1100px;margin:0 auto;padding:28px 24px 60px}
+
+    .nw-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+    .nw-chip{padding:8px 16px;border-radius:999px;border:1px solid var(--a-line);background:var(--a-bg2);color:var(--a-mute);font-size:13px;font-weight:600;text-decoration:none;transition:border-color .15s,color .15s,background .15s}
+    .nw-chip:hover{border-color:#6b5a3a;color:var(--a-gold2)}
+    .nw-chip.active{border-color:var(--a-gold);color:var(--a-gold);background:rgba(230,162,60,.12)}
+
+    .nw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+    .nw-card{display:flex;flex-direction:column;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;overflow:hidden;text-decoration:none;transition:transform .15s,border-color .15s}
+    .nw-card:hover{transform:translateY(-3px);border-color:var(--a-gold)}
+    .nw-img{aspect-ratio:16/9;background:linear-gradient(135deg,#2b2013,#14100c);display:flex;align-items:center;justify-content:center;color:#6b5a3a;font-size:40px;overflow:hidden}
+    .nw-img img{width:100%;height:100%;object-fit:cover;display:block}
+    .nw-bd{padding:16px 18px 18px;display:flex;flex-direction:column;gap:8px;flex:1}
+    .nw-tag{align-self:flex-start;font-size:11px;letter-spacing:1px;color:var(--a-gold);border:1px solid #6b5a3a;border-radius:999px;padding:2px 10px}
+    .nw-bd h3{margin:0;font-size:17px;font-weight:800;color:var(--a-text);line-height:1.4}
+    .nw-bd p{margin:0;font-size:14px;color:var(--a-mute);line-height:1.55;flex:1}
+    .nw-bd time{font-size:12px;color:#7d7261}
+
+    .nw-pager{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:30px;font-size:14px;color:var(--a-mute)}
+    .nw-pager a{padding:8px 18px;border:1px solid #6b5a3a;border-radius:8px;color:var(--a-gold);text-decoration:none;font-weight:700}
+    .nw-pager a:hover{background:rgba(230,162,60,.1)}
+    .nw-empty{padding:48px 16px;text-align:center;color:var(--a-mute);font-size:14px;border:1px dashed #6b5a3a;border-radius:12px;background:var(--a-bg2)}
+
+    @@media(max-width:900px){
+        .nw-pghead{padding:24px 16px 16px}
+        .nw-wrap{padding:20px 16px 50px}
+    }
+</style>
+
+<div class="nw-pghead">
+    <div class="eb">STAR CINEMA</div>
+    <h1>Tin tức</h1>
+    <p>Khuyến mãi mới, tin phim và các sự kiện tại Star Cinema.</p>
+</div>
+
+<div class="nw-wrap">
+    @if (Model.Categories.Count > 1)
+    {
+        <div class="nw-chips">
+            <a class="nw-chip @(Model.Category == null ? "active" : "")" href="/News">Tất cả</a>
+            @foreach (var c in Model.Categories)
+            {
+                <a class="nw-chip @(Model.Category == c ? "active" : "")" href="/News?category=@Uri.EscapeDataString(c)">@c</a>
+            }
+        </div>
+    }
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="nw-empty">Chưa có bài viết nào. Bạn quay lại sau nhé.</div>
+    }
+    else
+    {
+        <div class="nw-grid">
+            @foreach (var a in Model.Items)
+            {
+                <a class="nw-card" href="/News/@a.Slug">
+                    <div class="nw-img">
+                        @if (!string.IsNullOrEmpty(a.CoverUrl)) { <img src="@a.CoverUrl" alt="@a.Title" loading="lazy" /> }
+                        else { <span>★</span> }
+                    </div>
+                    <div class="nw-bd">
+                        <span class="nw-tag">@a.Category</span>
+                        <h3>@a.Title</h3>
+                        <p>@a.Summary</p>
+                        <time>@(a.PublishedAt?.AddHours(7).ToString("dd/MM/yyyy"))</time>
+                    </div>
+                </a>
+            }
+        </div>
+
+        @if (Model.Pages > 1)
+        {
+            <div class="nw-pager">
+                @if (Model.Page > 1) { <a href="@PageUrl(Model.Page - 1)">← Trước</a> }
+                <span>Trang @Model.Page / @Model.Pages</span>
+                @if (Model.Page < Model.Pages) { <a href="@PageUrl(Model.Page + 1)">Sau →</a> }
+            </div>
+        }
+    }
+</div>

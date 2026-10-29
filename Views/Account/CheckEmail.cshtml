@@ -1,0 +1,92 @@
+@{
+    ViewData["Title"] = "Xác nhận email";
+    Layout = "_AuthLayout";
+    ViewData["SideTitle"] = "Còn một bước nữa";
+    ViewData["SideText"] = "Xác nhận email để kích hoạt tài khoản của bạn.";
+
+    var email = (TempData.Peek("Email") as string) ?? "";
+    var devLink = TempData.Peek("DevLink") as string;
+    var devCode = TempData.Peek("DevCode") as string;
+    var msg = TempData.Peek("Msg") as string;
+    var err = TempData["CodeError"] as string;
+
+    int at = email.IndexOf('@');
+    string masked = at > 1 ? email[0] + new string('*', Math.Min(at - 1, 6)) + email.Substring(at) : email;
+
+    string domain = at >= 0 ? email.Substring(at + 1).ToLower() : "";
+    string? mailUrl = domain switch
+    {
+        "gmail.com" => "https://mail.google.com",
+        "outlook.com" or "hotmail.com" or "live.com" => "https://outlook.live.com/mail",
+        "yahoo.com" => "https://mail.yahoo.com",
+        _ => null
+    };
+    string mailName = domain == "gmail.com" ? "Gmail" : domain == "yahoo.com" ? "Yahoo Mail" : "Outlook";
+}
+
+<div class="sa-steps">
+    <span class="done"><i>✓</i> Đăng ký</span>
+    <span class="on"><i>2</i> Xác nhận email</span>
+    <span><i>3</i> Đăng nhập</span>
+</div>
+
+<h1>Kiểm tra email</h1>
+<p class="sa-sub">Chúng tôi đã gửi thư tới <b>@masked</b>. Không thấy thư? Hãy kiểm tra cả thư rác.</p>
+
+@if (!string.IsNullOrEmpty(msg))
+{
+    <div class="sa-ok">@msg</div>
+}
+
+@if (!string.IsNullOrEmpty(devLink))
+{
+    <div class="sa-dev">
+        <b>Chế độ thử nghiệm</b>: web chưa gửi được email thật nên liên kết và mã hiện ở đây (chỉ có trên máy phát triển).
+        <div class="mt-2"><a href="@devLink">Bấm vào đây để xác nhận email</a></div>
+        @if (!string.IsNullOrEmpty(devCode))
+        {
+            <div class="sa-dev-code">@devCode</div>
+        }
+    </div>
+}
+
+<div class="sa-opt">
+    <h5><span class="sa-num">1</span> Bấm liên kết trong email</h5>
+    <p>Mở thư "Xác nhận tài khoản Star Cinema" và bấm vào liên kết.</p>
+    @if (mailUrl != null)
+    {
+        <a href="@mailUrl" target="_blank" rel="noopener" class="st-btn ghost sm">Mở @mailName</a>
+    }
+</div>
+
+<div class="sa-or">HOẶC</div>
+
+<div class="sa-opt">
+    <h5><span class="sa-num">2</span> Nhập mã 6 số</h5>
+    <p>Mã nằm cùng trong email vừa gửi.</p>
+
+    @if (!string.IsNullOrEmpty(err))
+    {
+        <div class="sa-error"><ul><li>@err</li></ul></div>
+    }
+
+    <form asp-action="ConfirmEmailCode" method="post">
+        <input type="hidden" name="email" value="@email" />
+        <input type="hidden" name="code" id="sa-code" />
+        <div class="sa-digits" data-otp="#sa-code">
+            @for (int i = 0; i < 6; i++)
+            {
+                <input class="sa-digit" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Chữ số @(i + 1)" />
+            }
+        </div>
+        <button type="submit" class="st-btn primary sa-block">Xác nhận</button>
+    </form>
+</div>
+
+<form asp-action="Resend" method="post" class="sa-resend">
+    <input type="hidden" name="email" value="@email" />
+    Chưa nhận được?
+    <button type="submit" class="sa-linkbtn" data-countdown="60" data-label="Gửi lại email">Gửi lại email</button>
+</form>
+
+<p class="sa-foot"><a href="/Account/Login">Đã xác nhận? Đăng nhập</a></p>

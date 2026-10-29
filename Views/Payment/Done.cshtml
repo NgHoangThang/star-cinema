@@ -1,0 +1,106 @@
+@using CinemaApp.Models
+@model CinemaApp.Models.Booking
+@{
+    ViewData["Title"] = "Đã thanh toán";
+    ViewData["Dark"] = true;
+    var st = Model.Showtime;
+    var start = st.StartTime.AddHours(7);
+    var labels = Model.Seats
+        .OrderBy(x => x.Seat.RowLabel).ThenBy(x => x.Seat.SeatNumber)
+        .Select(x => x.Seat.RowLabel + x.Seat.SeatNumber).ToList();
+    var ticketGroups = Model.Seats
+        .GroupBy(x => TicketPricing.Get(x.TicketType).Name)
+        .Select(g => $"{g.Count()} × {g.Key}").ToList();
+    bool simulated = Model.PaymentMethod != "Transfer" && Model.PaymentMethod != "Cash";
+    string method = Model.PaymentMethod switch
+    {
+        "Card" => "Thẻ ATM / Visa",
+        "Wallet" => "Ví điện tử",
+        "QR" or "Transfer" => "Chuyển khoản QR",
+        "Cash" => "Tiền mặt tại quầy",
+        _ => Model.PaymentMethod ?? ""
+    };
+}
+
+<style>
+    .a-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .a-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .a-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 0;color:var(--a-text)}
+    .a-sim{margin:16px auto 0;max-width:1000px;padding:12px 16px;border:1px dashed var(--a-gold);border-radius:4px;color:var(--a-gold2);font-size:14px;background:var(--a-bg2)}
+    .a-rv{display:grid;grid-template-columns:minmax(0,1fr) 300px;max-width:1000px;margin:32px auto 0;background:var(--a-bg2);border:1px solid var(--a-gold);border-radius:8px;position:relative;box-shadow:0 20px 60px rgba(230,162,60,.2)}
+    .a-rv::before,.a-rv::after{content:"";position:absolute;right:292px;width:16px;height:16px;border-radius:50%;background:#0e0c0a;border:1px solid var(--a-gold)}
+    .a-rv::before{top:-9px}
+    .a-rv::after{bottom:-9px}
+    .a-rvmain{padding:26px 28px}
+    .a-rvmain h3{margin:0 0 16px;font-size:20px;color:var(--a-gold)}
+    .a-rvfacts{display:grid;grid-template-columns:120px 1fr;gap:10px 16px;font-size:14px;margin:0}
+    .a-rvfacts dt{color:var(--a-mute);font-weight:400}
+    .a-rvfacts dd{margin:0;color:var(--a-text)}
+    .a-chipseat{display:inline-block;border:1px solid var(--a-gold);color:var(--a-gold);border-radius:4px;padding:2px 9px;font-size:12px;margin:0 6px 4px 0}
+    .a-muted{color:var(--a-mute)}
+    .a-rvtotal{color:var(--a-gold);font-size:24px}
+    .a-disc{color:#7ee2a0}
+    .a-rvside{padding:26px 24px;border-left:2px dashed #6b5a3a;display:flex;flex-direction:column;gap:10px;justify-content:center;text-align:center}
+    .a-timerlabel{font-size:12px;color:var(--a-mute)}
+    .a-code{font-size:21px;font-weight:800;letter-spacing:2px;color:var(--a-gold);border:2px dashed var(--a-gold);border-radius:6px;padding:12px 8px;word-break:break-all}
+    .a-block{display:block;width:100%;text-align:center}
+    @@media(max-width:900px){
+        .a-pghead{padding:24px 16px 16px}
+        .a-sim{margin:16px 16px 0}
+        .a-rv{grid-template-columns:1fr;margin:24px 16px 0}
+        .a-rv::before,.a-rv::after{display:none}
+        .a-rvside{border-left:0;border-top:2px dashed #6b5a3a}
+        .a-rvfacts{grid-template-columns:100px 1fr}
+    }
+</style>
+
+<div class="a-pghead">
+    <div class="eb">HOÀN TẤT</div>
+    <h1>Đặt vé thành công</h1>
+</div>
+
+@if (simulated)
+{
+    <div class="a-sim"><b>THANH TOÁN GIẢ LẬP.</b> Không có khoản tiền thật nào bị trừ.</div>
+}
+
+<div class="a-rv">
+    <div class="a-rvmain">
+        <h3>@st.Movie.Title</h3>
+        <dl class="a-rvfacts">
+            <dt>Rạp</dt><dd>@st.Room.Cinema.Name</dd>
+            <dt>Suất chiếu</dt><dd>@start.ToString("HH:mm") · @start.ToString("dd/MM/yyyy")</dd>
+            <dt>Phòng</dt><dd>@st.Room.Name (@st.Room.Type) · @st.Format · @st.LanguageMode</dd>
+            <dt>Ghế</dt>
+            <dd>@foreach (var l in labels) { <span class="a-chipseat">@l</span> }</dd>
+            <dt>Loại vé</dt><dd>@string.Join(", ", ticketGroups)</dd>
+            <dt>Bắp nước</dt>
+            <dd>
+                @if (Model.Items.Count > 0)
+                {
+                    foreach (var i in Model.Items) { <div>@i.Quantity × @i.Product.Name</div> }
+                }
+                else { <span class="a-muted">Không chọn</span> }
+            </dd>
+            <dt>Thanh toán</dt><dd>@method · @(Model.PaidAt.HasValue ? Model.PaidAt.Value.AddHours(7).ToString("HH:mm dd/MM/yyyy") : "")</dd>
+            <dt>Tiền vé</dt><dd>@Model.Seats.Sum(s => s.Price).ToString("N0") đ</dd>
+            <dt>Tiền bắp nước</dt><dd>@Model.Items.Sum(i => i.UnitPrice * i.Quantity).ToString("N0") đ</dd>
+            @if (Model.MemberDiscount > 0)
+            {
+                <dt>Ưu đãi hạng</dt><dd class="a-disc">− @Model.MemberDiscount.ToString("N0") đ (hạng @Model.MemberTierName, giảm bắp nước)</dd>
+            }
+            @if (Model.DiscountAmount > 0)
+            {
+                <dt>Giảm giá</dt><dd class="a-disc">− @Model.DiscountAmount.ToString("N0") đ (mã @Model.VoucherCode)</dd>
+            }
+            <dt>Tổng cộng</dt><dd><b class="a-rvtotal">@Model.Total.ToString("N0") đ</b></dd>
+        </dl>
+    </div>
+    <div class="a-rvside">
+        <div class="a-timerlabel">Mã đặt vé</div>
+        <div class="a-code" id="pay-code">@Model.Code</div>
+        <p class="a-timerlabel" style="margin:0 0 6px">Đưa mã này cho nhân viên khi vào rạp.</p>
+        <a href="/Tickets/Details/@Model.Id" class="a-btn a-block">Xem vé và mã QR</a>
+        <a href="/" class="a-btn ghost a-block">Về trang chủ</a>
+    </div>
+</div>

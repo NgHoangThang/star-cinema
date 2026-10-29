@@ -1,0 +1,92 @@
+@model CinemaApp.Models.Article
+@using CinemaApp.Controllers
+@{
+    bool isNew = Model.Id == 0;
+    ViewData["Title"] = isNew ? "Viết bài mới" : "Sửa bài";
+    ViewData["Dark"] = true;
+    string? err = ViewBag.Err as string;
+}
+
+<style>
+    .ae-head{margin:0 0 20px}
+    .ae-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .ae-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .ae-head p{margin:0;color:var(--a-mute);font-size:14px}
+    .ae-err{margin:0 0 16px;padding:12px 16px;border:1px solid #8f2a3a;border-left:4px solid #a4132b;border-radius:6px;background:rgba(164,19,43,.12);color:#ffd9de;font-size:14px}
+    .ae-form{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:22px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:900px}
+    .ae-f{display:flex;flex-direction:column;gap:5px}
+    .ae-f.wide{grid-column:span 2}
+    .ae-f label{font-size:12px;color:var(--a-mute);letter-spacing:1px}
+    .ae-f input[type=text],.ae-f select,.ae-f textarea{background:#14100c;border:1px solid #6b5a3a;border-radius:8px;color:var(--a-text);padding:9px 11px;font-size:14px;font-family:inherit}
+    .ae-f textarea{resize:vertical;line-height:1.6}
+    .ae-f input:focus,.ae-f select:focus,.ae-f textarea:focus{outline:none;border-color:var(--a-gold)}
+    .ae-f small{color:var(--a-mute);font-size:11px}
+    .ae-check{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--a-text)}
+    .ae-check input{accent-color:#e6a23c;width:18px;height:18px}
+    .ae-btns{grid-column:span 2;display:flex;gap:12px;flex-wrap:wrap}
+    @@media(max-width:900px){.ae-form{grid-template-columns:1fr}.ae-f.wide,.ae-btns{grid-column:span 1}}
+</style>
+
+<div class="ae-head">
+    <div class="eb">QUẢN TRỊ · TIN TỨC</div>
+    <h1>@(isNew ? "Viết bài mới" : "Sửa bài")</h1>
+    <p>Nội dung viết dạng chữ thường: để một dòng trống để xuống đoạn mới.</p>
+</div>
+
+@if (!string.IsNullOrEmpty(err))
+{
+    <div class="ae-err">@err</div>
+}
+
+<form asp-controller="AdminNews" asp-action="Save" method="post" class="ae-form">
+    <input type="hidden" name="id" value="@Model.Id" />
+
+    <div class="ae-f wide">
+        <label>TIÊU ĐỀ (5 đến 200 ký tự)</label>
+        <input type="text" name="title" maxlength="200" value="@Model.Title" required />
+    </div>
+
+    <div class="ae-f">
+        <label>NHÓM BÀI</label>
+        <select name="category">
+            @foreach (var c in AdminNewsController.Categories)
+            {
+                <option value="@c" selected="@(Model.Category == c)">@c</option>
+            }
+        </select>
+    </div>
+
+    <div class="ae-f">
+        <label>ĐƯỜNG DẪN (không dấu)</label>
+        <input type="text" name="slug" maxlength="80" value="@Model.Slug" placeholder="Để trống: tự tạo từ tiêu đề" />
+        <small>Địa chỉ bài sẽ là /News/đường-dẫn</small>
+    </div>
+
+    <div class="ae-f wide">
+        <label>ẢNH BÌA (tùy chọn)</label>
+        <input type="text" name="coverUrl" maxlength="500" value="@Model.CoverUrl" placeholder="https://... hoặc /img/ten-anh.jpg" />
+        <small>Để trống thì hiện ngôi sao tạm. Tỉ lệ ảnh đẹp nhất 16:9.</small>
+    </div>
+
+    <div class="ae-f wide">
+        <label>MÔ TẢ NGẮN (tối đa 300 ký tự, hiện ở danh sách)</label>
+        <textarea name="summary" rows="3" maxlength="300">@Model.Summary</textarea>
+    </div>
+
+    <div class="ae-f wide">
+        <label>NỘI DUNG (10 đến 20,000 ký tự)</label>
+        <textarea name="body" rows="16" required>@Model.Body</textarea>
+    </div>
+
+    <div class="ae-f wide">
+        <label class="ae-check">
+            <input type="checkbox" name="publish" value="true" @(Model.IsPublished ? "checked" : "") />
+            <span>Đăng ngay (hiện cho khách ở trang Tin tức). Bỏ chọn để lưu nháp.</span>
+        </label>
+    </div>
+
+    <div class="ae-btns">
+        <button type="submit" class="a-btn">Lưu bài</button>
+        <a class="a-btn ghost" href="/Admin/News" style="text-align:center">Hủy</a>
+    </div>
+</form>

@@ -1,0 +1,49 @@
+@model CinemaApp.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Đăng nhập";
+    Layout = "_AuthLayout";
+    ViewData["SideTitle"] = "Phim hay đang chờ bạn";
+    ViewData["SideText"] = "Chọn suất chiếu, chọn ghế, nhận vé trong vài phút.";
+}
+
+<h1>Đăng nhập</h1>
+<p class="sa-sub">Nhập thông tin tài khoản của bạn</p>
+
+<form asp-action="Login" method="post">
+    <div asp-validation-summary="ModelOnly" class="sa-error"></div>
+    <input type="hidden" asp-for="ReturnUrl" />
+
+    <div class="sa-field">
+        <label asp-for="Email"></label>
+        <input asp-for="Email" type="email" autocomplete="email" placeholder="ten@email.com" />
+        <span asp-validation-for="Email" class="sa-ferr"></span>
+    </div>
+
+    <div class="sa-field">
+        <label asp-for="Password"></label>
+        <div class="sa-pw">
+            <input asp-for="Password" autocomplete="current-password" placeholder="Nhập mật khẩu" />
+            <button type="button" class="sa-eye" data-toggle-pw aria-label="Hiện hoặc ẩn mật khẩu"></button>
+        </div>
+        <span asp-validation-for="Password" class="sa-ferr"></span>
+    </div>
+
+    <div class="sa-row">
+        <label class="sa-check"><input asp-for="RememberMe" /> Ghi nhớ đăng nhập</label>
+        <a href="/Account/ForgotPassword" class="sa-link">Quên mật khẩu?</a>
+    </div>
+
+    <button type="submit" class="st-btn primary sa-block">Đăng nhập</button>
+</form>
+
+@if (ViewBag.ShowResend == true)
+{
+    <form asp-action="Resend" method="post" class="sa-gap">
+        <input type="hidden" name="email" value="@Model.Email" />
+        <button type="submit" class="st-btn ghost sa-block">Gửi lại email xác nhận</button>
+    </form>
+}
+
+<p class="sa-foot">Chưa có tài khoản?
+    <a href="/Account/Register?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl ?? "")">Đăng ký ngay</a>
+</p>

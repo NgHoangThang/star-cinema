@@ -1,0 +1,342 @@
+@using CinemaApp.Models
+@model CinemaApp.Models.Showtime
+@{
+    ViewData["Title"] = "Chọn ghế";
+    ViewData["Dark"] = true;
+    var seats = (List<Seat>)ViewBag.Seats;
+    var state = (Dictionary<int, string>)ViewBag.State;
+    var myTypes = (Dictionary<int, string>)ViewBag.MyTypes;
+    int? myBooking = ViewBag.MyBooking;
+    int? otherHold = ViewBag.OtherHold;
+    string? closedReason = ViewBag.ClosedReason;
+    int stopMinutes = ViewBag.StopMinutes;
+    int maxSeats = ViewBag.MaxSeats;
+    bool closed = closedReason != null;
+    bool childOk = ViewBag.ChildOk == true;
+    bool u22Ok = ViewBag.U22Ok == true;
+    bool hasBirth = ViewBag.HasBirth == true;
+    int childPerAdult = ViewBag.ChildPerAdult;
+    var err = TempData["BookErr"] as string;
+    int cols = seats.Count > 0 ? seats.Max(x => x.PosX) : 1;
+    var start = Model.StartTime.AddHours(7);
+    var end = Model.EndTime.AddHours(7);
+    int free = seats.Count(x => !state.ContainsKey(x.Id) || state[x.Id] == "mine");
+
+    var types = TicketPricing.All;
+    var pctAttrs = string.Join(" ", types.Select(t => $"data-pct-{t.Code.ToLower()}=\"{t.DiscountPercent}\""));
+    var typesJson = System.Text.Json.JsonSerializer.Serialize(
+        types.Select(t => new { code = t.Code, name = t.Name, pct = t.DiscountPercent, note = t.Note }));
+}
+
+<style>
+    .a-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .a-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .a-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 0;color:var(--a-text)}
+    .a-wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+    .a-alert{margin:16px auto 0;max-width:1052px;padding:12px 16px;border:1px solid #6b5a3a;border-left:4px solid var(--a-gold);border-radius:4px;background:var(--a-bg2);color:#d8cfbf;font-size:14px}
+    .a-alert.bad{border-color:var(--a-wine);border-left-color:var(--a-wine);color:#ffd9de}
+    .a-sbar{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:22px auto 0;max-width:1052px;padding:12px 16px;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:4px;font-size:14px;color:var(--a-mute)}
+    .a-sbar b{color:var(--a-gold)}
+    .a-screen{margin:34px auto 6px;width:min(640px,80%);text-align:center;color:var(--a-mute);font-size:11px;letter-spacing:6px}
+    .a-screen i{display:block;height:10px;border-radius:50% 50% 0 0/100% 100% 0 0;background:linear-gradient(180deg,#ffd27a,#e6a23c 60%,transparent);box-shadow:0 14px 40px rgba(230,162,60,.45);margin-bottom:8px}
+    .a-seatscroll{overflow-x:auto;padding:24px 0 8px;text-align:center}
+    .a-seatgrid{display:inline-grid;gap:6px;margin:0 auto}
+    .a-seat{width:34px;height:32px;border:1px solid #6b5a3a;background:#241d15;color:var(--a-mute);font-size:10px;border-radius:6px 6px 3px 3px;cursor:pointer;padding:0;transition:transform .12s,background .12s,border-color .12s}
+    .a-seat:hover:not([disabled]){transform:translateY(-2px);border-color:var(--a-gold);color:var(--a-gold)}
+    .a-seat.vip{border-color:var(--a-gold);color:var(--a-gold2)}
+    .a-seat.selected{background:var(--a-gold);border-color:var(--a-gold2);color:#1a1208;font-weight:700;box-shadow:0 0 14px rgba(230,162,60,.55)}
+    .a-seat.held{background:repeating-linear-gradient(45deg,#3a2c1a,#3a2c1a 4px,#2a2014 4px,#2a2014 8px);border-style:dashed;cursor:not-allowed;color:#6b5a3a}
+    .a-seat.sold{background:#14100c;border-color:#2a231b;color:#3a3226;cursor:not-allowed}
+    .a-legend{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--a-mute);margin:10px 0 0}
+    .a-legend span{display:flex;align-items:center;gap:6px}
+    .a-legend .a-seat{width:20px;height:18px;cursor:default;pointer-events:none}
+    .a-sum{margin:28px auto 0;max-width:1052px;display:grid;grid-template-columns:110px 1fr auto;gap:22px;padding:20px;background:var(--a-bg2);border:1px solid var(--a-gold);border-radius:6px;align-items:start}
+    .a-sum img{width:110px;border-radius:4px;display:block}
+    .a-sum h4{margin:0 0 6px;font-size:18px;color:var(--a-gold)}
+    .a-sum-info{font-size:14px;color:var(--a-mute);display:grid;gap:4px}
+    .a-sum-info b{color:var(--a-text);font-weight:600}
+    .a-tklines{margin-top:8px;display:grid;gap:6px}
+    .a-tkempty{color:var(--a-mute);font-style:italic}
+    .a-tkrow{display:flex;align-items:center;gap:10px;justify-content:space-between;border-top:1px dashed var(--a-line);padding-top:6px}
+    .a-tkrow b{color:var(--a-gold);min-width:70px}
+    .a-tkrow select{background:#14100c;color:var(--a-text);border:1px solid #6b5a3a;border-radius:4px;padding:4px 8px;font-size:13px}
+    .a-tkrow span{color:var(--a-text);min-width:90px;text-align:right}
+    .a-tknote{font-size:12px;color:var(--a-mute)}
+    .a-tkwarn{display:none;color:#ff9aa6;font-size:13px}
+    .a-ack{display:none;gap:8px;align-items:flex-start;font-size:12px;color:#d8cfbf;margin-top:6px}
+    .a-ack input{margin-top:3px;accent-color:#e6a23c}
+    .a-total{margin-top:10px;font-size:15px;color:var(--a-mute)}
+    .a-total b{color:var(--a-gold);font-size:24px}
+    .a-sum-actions{display:flex;flex-direction:column;gap:10px;min-width:200px}
+    .a-sum-actions button{width:100%}
+    .a-sum-actions button:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+    @@media(max-width:900px){
+        .a-pghead{padding:24px 16px 16px}
+        .a-sum{grid-template-columns:1fr;margin:24px 16px 0}
+        .a-sum img{width:90px}
+        .a-sum-actions{min-width:0}
+        .a-alert,.a-sbar{margin-left:16px;margin-right:16px}
+    }
+</style>
+
+<div id="tt-config" hidden data-base="@((int)Model.EffectivePrice)" data-raw="@((int)Model.BasePrice)" data-vip="@((int)TicketPricing.VipSurcharge)"
+     data-child-ok="@(childOk ? 1 : 0)" data-child-per-adult="@childPerAdult"
+     data-u22-ok="@(u22Ok ? 1 : 0)" data-has-birth="@(hasBirth ? 1 : 0)" data-u22-max="@TicketPricing.U22MaxPerOrder" @Html.Raw(pctAttrs)></div>
+
+<div class="a-pghead">
+    <div class="eb">BƯỚC 1 · CHỌN GHẾ VÀ LOẠI VÉ</div>
+    <h1>@Model.Movie.Title</h1>
+</div>
+
+@if (!string.IsNullOrEmpty(err))
+{
+    <div class="a-alert bad">@err</div>
+}
+@if (closedReason == "started")
+{
+    <div class="a-alert bad">Suất chiếu này đã bắt đầu, không thể đặt thêm.</div>
+}
+else if (closedReason == "stopped")
+{
+    <div class="a-alert bad">
+        Đã ngừng bán vé online cho suất này (ngừng trước giờ chiếu @stopMinutes phút). Bạn có thể mua vé tại quầy.
+    </div>
+}
+@if (otherHold != null && !closed)
+{
+    <div class="a-alert">
+        Bạn đang giữ ghế ở một suất chiếu khác (<a href="/Booking/Review/@otherHold">xem đơn đó</a>).
+        Mỗi tài khoản chỉ giữ ghế ở một suất cùng lúc: khi bạn giữ ghế ở suất này, ghế ở suất kia sẽ được nhả.
+    </div>
+}
+@if (myBooking != null && !closed)
+{
+    <div class="a-alert">
+        Bạn đang giữ ghế cho suất này. Các ghế của bạn được chọn sẵn (màu vàng), bạn có thể đổi ghế hoặc loại vé rồi bấm
+        giữ ghế lại, hoặc <a href="/Booking/Review/@myBooking">xem lại đơn đang giữ</a>.
+    </div>
+}
+@if (!hasBirth && !closed)
+{
+    <div class="a-alert">
+        Muốn mua vé U22 (từ 22 tuổi trở xuống)? <a href="/Profile">Cập nhật ngày sinh trong Hồ sơ cá nhân</a> trước nhé.
+    </div>
+}
+
+<div class="a-sbar">
+    <span><b>@Model.Room.Cinema.Name</b> | @Model.Room.Type | Số ghế (@free/@seats.Count)</span>
+    <span>@start.ToString("dd/MM/yyyy HH:mm") ~ @end.ToString("dd/MM/yyyy HH:mm")</span>
+</div>
+
+<div class="a-screen"><i></i>MÀN HÌNH</div>
+
+<div class="a-wrap">
+    <div class="a-seatscroll">
+        <div class="a-seatgrid" style="grid-template-columns: repeat(@cols, 34px);">
+            @foreach (var s in seats)
+            {
+                var label = s.RowLabel + s.SeatNumber;
+                state.TryGetValue(s.Id, out var st);
+                string tcode = myTypes.TryGetValue(s.Id, out var mt) && !string.IsNullOrEmpty(mt) ? mt : "Adult";
+                string cls = (s.SeatType == "VIP" ? " vip" : "")
+                           + (st == "sold" ? " sold" : st == "held" ? " held" : st == "mine" ? " selected" : "");
+                bool locked = closed || st == "sold" || st == "held";
+                string note = st == "sold" ? " · đã bán" : st == "held" ? " · đang được giữ" : "";
+                int adultPrice = (int)TicketPricing.Price(Model.EffectivePrice, s.SeatType, "Adult");
+                <button type="button" class="a-seat@(cls)" style="grid-column:@(s.PosX); grid-row:@(s.PosY + 1);"
+                        data-id="@s.Id" data-label="@label" data-vip="@(s.SeatType == "VIP" ? 1 : 0)" data-type="@tcode"
+                        disabled="@locked" title="@label · @adultPrice.ToString("N0")đ (người lớn)@note">@label</button>
+            }
+        </div>
+    </div>
+
+    <div class="a-legend">
+        <span><i class="a-seat"></i> Ghế thường</span>
+        <span><i class="a-seat vip"></i> Ghế VIP (+@TicketPricing.VipSurcharge.ToString("N0")đ)</span>
+        <span><i class="a-seat selected"></i> Ghế đang chọn</span>
+        <span><i class="a-seat held"></i> Đang được giữ</span>
+        <span><i class="a-seat sold"></i> Đã bán</span>
+    </div>
+</div>
+
+<div class="a-sum">
+    <img src="@Model.Movie.PosterUrl" alt="@Model.Movie.Title" />
+    <div class="a-sum-info">
+        <h4>@Model.Movie.Title</h4>
+        <div>Rạp: <b>@Model.Room.Cinema.Name</b></div>
+        <div>Suất chiếu: <b>@start.ToString("HH:mm") · @start.ToString("dd/MM/yyyy")</b></div>
+        <div>Phòng: <b>@Model.Room.Name (@Model.Room.Type)</b> · @Model.Format · @Model.LanguageMode</div>
+        <div class="a-tklines" id="bk-lines"><span class="a-tkempty">Chưa chọn ghế</span></div>
+        <div class="a-tknote" id="bk-note"></div>
+        <div class="a-tkwarn" id="bk-warn"></div>
+        <label class="a-ack" id="tk-ack">
+            <input type="checkbox" id="ack-box" />
+            <span>
+                Tôi hiểu vé trẻ em chỉ dành cho trẻ em dưới 13 tuổi đi cùng người lớn. Khi vào rạp, nhân viên có thể kiểm tra;
+                nếu không đúng đối tượng, tôi sẽ phải trả chênh lệch giá vé hoặc bị từ chối vào rạp.
+            </span>
+        </label>
+        <div class="a-total">Tổng: <b id="bk-total">0 đ</b></div>
+    </div>
+    <div class="a-sum-actions">
+        <form asp-action="Hold" method="post" id="hold-form">
+            <input type="hidden" name="showtimeId" value="@Model.Id" />
+            <input type="hidden" name="seats" id="seat-list" />
+            <input type="hidden" name="ack" id="ack-val" value="0" />
+            <button type="submit" id="bk-next" class="a-btn" disabled>Giữ ghế và tiếp tục</button>
+        </form>
+        <a href="javascript:history.back()" class="a-btn ghost" style="text-align:center">Quay lại</a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Các luật bên dưới chỉ để báo sớm cho người dùng. Server kiểm tra lại toàn bộ.
+        var MAX_SEATS = @maxSeats;
+        var cfg = document.getElementById('tt-config');
+        var BASE = parseInt(cfg.dataset.base, 10);
+        var RAW = parseInt(cfg.dataset.raw, 10);
+        var VIP = parseInt(cfg.dataset.vip, 10);
+        var CHILD_OK = cfg.dataset.childOk === '1';
+        var CHILD_PER_ADULT = parseInt(cfg.dataset.childPerAdult, 10);
+        var U22_OK = cfg.dataset.u22Ok === '1';
+        var HAS_BIRTH = cfg.dataset.hasBirth === '1';
+        var U22_MAX = parseInt(cfg.dataset.u22Max, 10);
+        var TYPES = @Html.Raw(typesJson);
+        var NEXT_LABEL = 'Giữ ghế và tiếp tục';
+        var submitting = false;
+
+        function typeOf(code) {
+            for (var i = 0; i < TYPES.length; i++) if (TYPES[i].code === code) return TYPES[i];
+            return TYPES[0];
+        }
+        // Cùng công thức với server (chỉ để hiển thị, server tính lại khi giữ ghế)
+        function priceOf(code, isVip) {
+            if (code === 'U22') {
+                // U22: lấy giá thấp hơn giữa "giảm U22 trên giá gốc" và "giá đã ưu đãi giờ/ngày"
+                var fromRaw = Math.round(RAW * (100 - typeOf(code).pct) / 100000) * 1000;
+                var fromEff = Math.round(BASE / 1000) * 1000;
+                return Math.min(fromRaw, fromEff) + (isVip ? VIP : 0);
+            }
+            return Math.round(BASE * (100 - typeOf(code).pct) / 100000) * 1000 + (isVip ? VIP : 0);
+        }
+        function money(n) { return n.toLocaleString('vi-VN') + ' đ'; }
+
+        var picks = {};   // mã ghế -> { label, vip, type }
+        var order = [];   // thứ tự chọn
+        var buttons = document.querySelectorAll('.a-seatgrid .a-seat:not([disabled])');
+        var nextBtn = document.getElementById('bk-next');
+
+        buttons.forEach(function (b) {
+            if (b.classList.contains('selected')) {
+                picks[b.dataset.id] = { label: b.dataset.label, vip: b.dataset.vip === '1', type: b.dataset.type || 'Adult' };
+                order.push(b.dataset.id);
+            }
+        });
+
+        function render() {
+            var box = document.getElementById('bk-lines');
+            box.innerHTML = '';
+            var total = 0, notes = {}, adults = 0, children = 0, u22 = 0, u22Vip = false;
+            if (order.length === 0) {
+                var e = document.createElement('span');
+                e.className = 'a-tkempty';
+                e.textContent = 'Chưa chọn ghế';
+                box.appendChild(e);
+            }
+            order.forEach(function (id) {
+                var p = picks[id];
+                var price = priceOf(p.type, p.vip);
+                total += price;
+                if (p.type === 'Adult' || p.type === 'U22') adults++;
+                if (p.type === 'Child') children++;
+                if (p.type === 'U22') { u22++; if (p.vip) u22Vip = true; }
+                if (typeOf(p.type).note) notes[p.type] = typeOf(p.type).name + ': ' + typeOf(p.type).note;
+
+                var row = document.createElement('div');
+                row.className = 'a-tkrow';
+                var lab = document.createElement('b');
+                lab.textContent = p.label + (p.vip ? ' (VIP)' : '');
+                var sel = document.createElement('select');
+                TYPES.forEach(function (t) {
+                    var o = document.createElement('option');
+                    o.value = t.code;
+                    o.textContent = t.name;
+                    if (t.code === 'Child' && !CHILD_OK) { o.disabled = true; o.textContent += ' (chỉ phim P/K)'; }
+                    if (t.code === 'U22' && !U22_OK) {
+                        o.disabled = true;
+                        o.textContent += HAS_BIRTH ? ' (chỉ từ 22 tuổi trở xuống)' : ' (cần ngày sinh trong Hồ sơ)';
+                    }
+                    if (t.code === p.type) o.selected = true;
+                    sel.appendChild(o);
+                });
+                var pr = document.createElement('span');
+                pr.textContent = money(price);
+                sel.addEventListener('change', function () { p.type = sel.value; render(); });
+                row.appendChild(lab); row.appendChild(sel); row.appendChild(pr);
+                box.appendChild(row);
+            });
+
+            // Báo sớm các luật
+            var warn = '';
+            if (children > 0 && adults === 0) warn = 'Vé trẻ em phải mua kèm ít nhất một vé người lớn.';
+            else if (children > adults * CHILD_PER_ADULT) warn = 'Mỗi người lớn đi cùng tối đa ' + CHILD_PER_ADULT + ' trẻ em.';
+            else if (u22 > U22_MAX) warn = 'Mỗi đơn chỉ được mua ' + U22_MAX + ' vé U22.';
+            else if (u22Vip) warn = 'Vé U22 chỉ áp dụng cho ghế thường.';
+            var warnEl = document.getElementById('bk-warn');
+            warnEl.textContent = warn;
+            warnEl.style.display = warn ? 'block' : 'none';
+
+            var needAck = children > 0;
+            document.getElementById('tk-ack').style.display = needAck ? 'flex' : 'none';
+            var acked = needAck && document.getElementById('ack-box').checked;
+            document.getElementById('ack-val').value = acked ? '1' : '0';
+
+            document.getElementById('bk-total').textContent = money(total);
+            document.getElementById('bk-note').textContent = Object.keys(notes).map(function (k) { return notes[k]; }).join(' ');
+            document.getElementById('seat-list').value = order.map(function (id) { return id + ':' + picks[id].type; }).join(',');
+            nextBtn.disabled = submitting || order.length === 0 || warn !== '' || (needAck && !acked);
+        }
+
+        document.getElementById('ack-box').addEventListener('change', render);
+
+        buttons.forEach(function (b) {
+            b.addEventListener('click', function () {
+                var id = b.dataset.id;
+                if (picks[id]) {
+                    delete picks[id];
+                    order = order.filter(function (x) { return x !== id; });
+                    b.classList.remove('selected');
+                } else {
+                    if (MAX_SEATS > 0 && order.length >= MAX_SEATS) {
+                        alert('Mỗi lần đặt tối đa ' + MAX_SEATS + ' ghế.');
+                        return;
+                    }
+                    picks[id] = { label: b.dataset.label, vip: b.dataset.vip === '1', type: 'Adult' };
+                    order.push(id);
+                    b.classList.add('selected');
+                }
+                render();
+            });
+        });
+
+        // Chỉ cho gửi một lần: bấm đúp không tạo hai yêu cầu giữ ghế
+        document.getElementById('hold-form').addEventListener('submit', function (e) {
+            if (submitting) { e.preventDefault(); return; }
+            render();
+            if (nextBtn.disabled) { e.preventDefault(); return; }
+            submitting = true;
+            nextBtn.disabled = true;
+            nextBtn.textContent = 'Đang giữ ghế...';
+        });
+
+        // Quay lại trang bằng nút Back của trình duyệt thì mở khóa nút lại
+        window.addEventListener('pageshow', function () {
+            submitting = false;
+            nextBtn.textContent = NEXT_LABEL;
+            render();
+        });
+
+        render();
+    </script>
+}

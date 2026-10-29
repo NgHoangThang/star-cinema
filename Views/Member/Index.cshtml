@@ -1,0 +1,175 @@
+@using CinemaApp.Controllers
+@using CinemaApp.Models
+@model MemberView
+@{
+    ViewData["Title"] = "Thành viên";
+    ViewData["Dark"] = true;
+    var s = Model.Status;
+}
+
+<style>
+    .mb-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .mb-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .mb-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 4px;color:var(--a-text)}
+    .mb-pghead p{margin:0;font-size:14px;color:var(--a-mute)}
+    .mb-wrap{max-width:1000px;margin:0 auto;padding:28px 24px 60px}
+
+    .mb-hero{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:0;background:var(--a-bg2);border:1px solid var(--a-gold);border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(230,162,60,.12)}
+    .mb-main{padding:28px}
+    .mb-main .lb{font-size:12px;letter-spacing:2px;color:var(--a-mute)}
+    .mb-tier{font-size:clamp(30px,5vw,44px);font-weight:800;margin:6px 0 2px}
+    .mb-sub{color:var(--a-mute);font-size:14px;margin:0 0 18px}
+    .mb-bar{height:10px;border-radius:10px;background:#2a231b;overflow:hidden}
+    .mb-bar i{display:block;height:100%;border-radius:10px;background:linear-gradient(90deg,#e6a23c,#ffd27a)}
+    .mb-barlbl{display:flex;justify-content:space-between;font-size:12px;color:var(--a-mute);margin-top:8px}
+    .mb-pts{padding:28px;border-left:2px dashed #6b5a3a;display:flex;flex-direction:column;justify-content:center;text-align:center}
+    .mb-pts .lb{font-size:12px;letter-spacing:2px;color:var(--a-mute)}
+    .mb-pts b{display:block;font-size:48px;font-weight:800;color:var(--a-gold);line-height:1.1;margin-top:6px}
+    .mb-pts span{font-size:13px;color:var(--a-mute)}
+
+    .mb-h2{font-size:18px;font-weight:800;margin:34px 0 14px;color:var(--a-text)}
+    .mb-msg{margin:0 0 16px;padding:12px 16px;border:1px solid var(--a-gold);border-left:4px solid var(--a-gold);border-radius:8px;background:var(--a-bg2);color:var(--a-text);font-size:14px}
+    .mb-gift{margin-top:14px;padding:20px 22px;border:1px solid #6b5a3a;border-radius:12px;background:linear-gradient(135deg,#241a0e,var(--a-bg2))}
+    .mb-gift b.t{display:block;font-size:17px;color:var(--a-gold);margin-bottom:6px}
+    .mb-gift p{margin:0 0 10px;font-size:14px;color:var(--a-text);line-height:1.55}
+    .mb-gift p.s{color:var(--a-mute);font-size:13px}
+    .mb-gift a{color:var(--a-gold)}
+    .mb-giftcode{display:inline-block;font-size:24px;font-weight:800;letter-spacing:3px;color:var(--a-gold);border:2px dashed var(--a-gold);border-radius:8px;padding:8px 18px;margin:4px 0 10px}
+    .mb-tiers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .mb-t{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:18px}
+    .mb-t.cur{border-color:var(--a-gold);box-shadow:0 0 0 1px var(--a-gold) inset}
+    .mb-t .n{font-size:18px;font-weight:800}
+    .mb-t .m{font-size:13px;color:var(--a-mute);margin:4px 0 10px}
+    .mb-t .p{font-size:13px;color:var(--a-text);line-height:1.5}
+    .mb-t .tag{display:inline-block;margin-top:10px;font-size:11px;letter-spacing:1px;color:var(--a-gold);border:1px solid var(--a-gold);border-radius:999px;padding:2px 10px}
+
+    .mb-rule{margin-top:14px;padding:12px 16px;border:1px dashed var(--a-gold);border-radius:8px;color:var(--a-gold2);font-size:13px;background:var(--a-bg2)}
+
+    .mb-hist{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;overflow:hidden}
+    .mb-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--a-line)}
+    .mb-row:last-child{border-bottom:0}
+    .mb-row .t{min-width:0}
+    .mb-row .t b{display:block;color:var(--a-text);font-size:14px}
+    .mb-row .t small{color:var(--a-mute);font-size:12px}
+    .mb-row .pt{font-weight:800;color:#7ee2a0;white-space:nowrap}
+    .mb-empty{padding:40px 16px;text-align:center;color:var(--a-mute);font-size:14px}
+
+    @@media(max-width:900px){
+        .mb-pghead{padding:24px 16px 16px}
+        .mb-wrap{padding:20px 16px 50px}
+        .mb-hero{grid-template-columns:1fr}
+        .mb-pts{border-left:0;border-top:2px dashed #6b5a3a}
+        .mb-tiers{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+</style>
+
+<div class="mb-pghead">
+    <div class="eb">STAR CINEMA</div>
+    <h1>Thành viên</h1>
+    <p>Xem phim càng nhiều, hạng càng cao, ưu đãi càng lớn.</p>
+</div>
+
+<div class="mb-wrap">
+    <div class="mb-hero">
+        <div class="mb-main">
+            <div class="lb">HẠNG HIỆN TẠI</div>
+            <div class="mb-tier" style="color:@s.Tier.Color">@s.Tier.Name</div>
+            @if (s.Next != null)
+            {
+                <p class="mb-sub">Còn <b>@s.ToNext.ToString("N0")</b> điểm nữa để lên hạng <b>@s.Next.Name</b>.</p>
+                <div class="mb-bar"><i style="width:@s.Percent%"></i></div>
+                <div class="mb-barlbl"><span>@s.Tier.Name · @s.Tier.MinPoints.ToString("N0")</span><span>@s.Next.Name · @s.Next.MinPoints.ToString("N0")</span></div>
+            }
+            else
+            {
+                <p class="mb-sub">Bạn đang ở hạng cao nhất. Cảm ơn bạn đã đồng hành cùng Star Cinema.</p>
+                <div class="mb-bar"><i style="width:100%"></i></div>
+            }
+        </div>
+        <div class="mb-pts">
+            <div class="lb">ĐIỂM XÉT HẠNG (12 THÁNG)</div>
+            <b>@s.Points.ToString("N0")</b>
+            <span>Tổng điểm tích lũy: @Model.TotalPoints.ToString("N0")</span>
+        </div>
+    </div>
+
+    <div class="mb-rule">
+        Cách tích điểm: cứ <b>@MembershipRules.VndPerPoint.ToString("N0") đ</b> bạn thực trả cho một đơn được 1 điểm.
+        Điểm được cộng khi bạn đã vào rạp (vé được quét ở cổng). Hạng tính theo điểm nhận trong 12 tháng gần nhất.
+    </div>
+
+    @if (TempData["MemberMsg"] is string mmsg)
+    {
+        <div class="mb-msg" style="margin-top:14px">@mmsg</div>
+    }
+    <div class="mb-gift">
+        <b class="t">Quà sinh nhật</b>
+        @if (Model.GiftState == "NoBirth")
+        {
+            <p>Bạn chưa cập nhật ngày sinh. <a href="/Profile">Cập nhật ở Hồ sơ</a> để nhận quà trong tháng sinh nhật.</p>
+            <p class="s">Thành viên từ hạng Bạc nhận mã giảm giá riêng: Bạc 50,000 đ, Vàng 100,000 đ, Kim cương 200,000 đ.</p>
+        }
+        else if (Model.GiftState == "Claimed")
+        {
+            <p>Bạn đã nhận quà sinh nhật năm nay. Mã của bạn:</p>
+            <div class="mb-giftcode">@Model.GiftCode</div>
+            <p class="s">Dùng 1 lần, chỉ tài khoản của bạn dùng được, hết hạn hết ngày @(Model.GiftEnds.HasValue ? Model.GiftEnds.Value.AddHours(7).AddDays(-1).ToString("dd/MM/yyyy") : ""). Nhập mã ở bước thanh toán.</p>
+        }
+        else if (Model.GiftState == "NotMonth")
+        {
+            <p>Quà sinh nhật nhận được trong tháng sinh nhật của bạn, dành cho thành viên từ hạng Bạc.</p>
+            <p class="s">Bạc 50,000 đ, Vàng 100,000 đ, Kim cương 200,000 đ. Mỗi năm nhận một lần.</p>
+        }
+        else if (Model.GiftState == "LowTier")
+        {
+            <p>Tháng này là tháng sinh nhật của bạn. Quà sinh nhật dành cho thành viên từ hạng <b>Bạc</b> (từ 1,000 điểm). Tích thêm điểm để nhận quà nhé.</p>
+        }
+        else
+        {
+            <p>Chúc mừng sinh nhật! Bạn nhận được mã giảm <b>@Model.GiftAmount.ToString("N0") đ</b> cho đơn từ @Model.GiftMin.ToString("N0") đ.</p>
+            <form method="post" action="/Member/Birthday" style="margin:0">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="a-btn">Nhận quà sinh nhật</button>
+            </form>
+            <p class="s" style="margin-top:10px">Dùng 1 lần, chỉ tài khoản của bạn dùng được, hết hạn cuối tháng sinh nhật.</p>
+        }
+    </div>
+
+    <h2 class="mb-h2">Các hạng thành viên</h2>
+    <div class="mb-tiers">
+        @foreach (var t in MembershipRules.Tiers)
+        {
+            <div class="mb-t @(t.Name == s.Tier.Name ? "cur" : "")">
+                <div class="n" style="color:@t.Color">@t.Name</div>
+                <div class="m">Từ @t.MinPoints.ToString("N0") điểm</div>
+                <div class="p">@t.Perk</div>
+                @if (t.Name == s.Tier.Name) { <span class="tag">HẠNG CỦA BẠN</span> }
+            </div>
+        }
+    </div>
+
+    <h2 class="mb-h2">Lịch sử điểm</h2>
+    <div class="mb-hist">
+        @if (Model.Entries.Count == 0)
+        {
+            <div class="mb-empty">Chưa có điểm nào. Đặt vé, xem phim và quét vé ở cổng để bắt đầu tích điểm.</div>
+        }
+        else
+        {
+            foreach (var e in Model.Entries)
+            {
+                <div class="mb-row">
+                    <div class="t">
+                        <b>@(string.IsNullOrEmpty(e.MovieTitle) ? e.Reason : e.MovieTitle)</b>
+                        <small>@e.CreatedAt.AddHours(7).ToString("HH:mm dd/MM/yyyy")@(string.IsNullOrEmpty(e.MovieTitle) ? "" : " · " + e.Reason)</small>
+                    </div>
+                    <div class="pt">+@e.Points.ToString("N0")</div>
+                </div>
+            }
+        }
+    </div>
+    @if (Model.TotalEntries > Model.Entries.Count)
+    {
+        <p class="mb-sub" style="margin-top:10px">Đang hiển thị @Model.Entries.Count lần gần nhất trong tổng số @Model.TotalEntries lần.</p>
+    }
+</div>

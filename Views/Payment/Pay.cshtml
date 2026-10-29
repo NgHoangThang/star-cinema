@@ -1,0 +1,255 @@
+@using CinemaApp.Models
+@model CinemaApp.Models.Booking
+@{
+    ViewData["Title"] = "Thanh toán";
+    ViewData["Dark"] = true;
+    var st = Model.Showtime;
+    var start = st.StartTime.AddHours(7);
+    int left = (int)Math.Max(0, (Model.ExpiresAt - DateTime.UtcNow).TotalSeconds);
+    bool simOn = ViewBag.SimOn == true;
+    bool seatsOk = ViewBag.SeatsOk == true;
+    bool bankReady = ViewBag.BankReady == true;
+    bool transferOk = seatsOk && ViewBag.TransferOk == true;
+    bool cashOk = seatsOk && ViewBag.CashOk == true;
+    int transferMinutes = ViewBag.TransferMinutes;
+    int cashMaxSeats = ViewBag.CashMaxSeats;
+    var cashUntil = ((DateTime)ViewBag.CashUntil).AddHours(7);
+    var labels = Model.Seats
+        .OrderBy(x => x.Seat.RowLabel).ThenBy(x => x.Seat.SeatNumber)
+        .Select(x => x.Seat.RowLabel + x.Seat.SeatNumber).ToList();
+    var ticketGroups = Model.Seats
+        .GroupBy(x => TicketPricing.Get(x.TicketType).Name)
+        .Select(g => $"{g.Count()} × {g.Key}").ToList();
+    decimal seatsTotal = Model.Seats.Sum(s => s.Price);
+    decimal itemsTotal = Model.Items.Sum(i => i.UnitPrice * i.Quantity);
+    decimal discount = ViewBag.Discount;
+    decimal finalTotal = ViewBag.FinalTotal;
+    string? vcode = ViewBag.VoucherCode;
+    decimal memberDisc = ViewBag.MemberDiscount;
+    string? memberTier = ViewBag.MemberTier;
+}
+
+<style>
+    .a-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .a-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .a-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 0;color:var(--a-text)}
+    .a-alert{margin:16px 48px 0;padding:12px 16px;border:1px solid var(--a-wine);border-left:4px solid var(--a-wine);border-radius:4px;background:var(--a-bg2);color:#ffd9de;font-size:14px}
+    .a-okmsg{margin:16px 48px 0;padding:12px 16px;border:1px solid #2f7d4f;border-left:4px solid #2f7d4f;border-radius:4px;background:var(--a-bg2);color:#c9f2d8;font-size:14px}
+    .a-rv{display:grid;grid-template-columns:minmax(0,1fr) 340px;max-width:1000px;margin:32px auto 0;background:var(--a-bg2);border:1px solid var(--a-gold);border-radius:8px;position:relative;box-shadow:0 20px 60px rgba(230,162,60,.15)}
+    .a-rv::before,.a-rv::after{content:"";position:absolute;right:332px;width:16px;height:16px;border-radius:50%;background:#0e0c0a;border:1px solid var(--a-gold)}
+    .a-rv::before{top:-9px}
+    .a-rv::after{bottom:-9px}
+    .a-rvmain{padding:26px 28px}
+    .a-rvmain h3{margin:0 0 16px;font-size:20px;color:var(--a-gold)}
+    .a-rvfacts{display:grid;grid-template-columns:120px 1fr;gap:10px 16px;font-size:14px;margin:0}
+    .a-rvfacts dt{color:var(--a-mute);font-weight:400}
+    .a-rvfacts dd{margin:0;color:var(--a-text)}
+    .a-chipseat{display:inline-block;border:1px solid var(--a-gold);color:var(--a-gold);border-radius:4px;padding:2px 9px;font-size:12px;margin:0 6px 4px 0}
+    .a-muted{color:var(--a-mute)}
+    .a-rvtotal{color:var(--a-gold);font-size:24px}
+    .a-disc{color:#7ee2a0}
+    .a-vc{margin-top:18px;padding-top:16px;border-top:1px dashed #6b5a3a}
+    .a-vc .lb{font-size:12px;letter-spacing:2px;color:var(--a-mute);margin-bottom:8px}
+    .a-vcform{display:flex;gap:8px}
+    .a-vcform input{flex:1;min-width:0;background:#14100c;border:1px solid #6b5a3a;border-radius:6px;color:var(--a-text);padding:9px 12px;font-size:14px;text-transform:uppercase;letter-spacing:1px}
+    .a-vcform input:focus{outline:none;border-color:var(--a-gold)}
+    .a-vcon{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid #2f7d4f;border-radius:6px;background:rgba(47,125,79,.12);font-size:14px;color:#c9f2d8}
+    .a-vcon form{margin:0}
+    .a-vclink{background:none;border:0;color:var(--a-gold);text-decoration:underline;cursor:pointer;font-size:13px;padding:0}
+    .a-rvside{padding:26px 24px;border-left:2px dashed #6b5a3a;display:flex;flex-direction:column;gap:10px}
+    .a-timerlabel{font-size:12px;color:var(--a-mute)}
+    .a-timer{font-size:34px;font-weight:800;letter-spacing:2px;color:var(--a-text);margin:0 0 4px}
+    .a-timer.warn{color:#ffb74d}
+    .a-timer.over{color:#ff6b7d}
+    .a-block{display:block;width:100%;text-align:center}
+    .a-methods{display:grid;gap:10px;margin-bottom:12px}
+    .a-opt{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border:1px solid #6b5a3a;border-radius:6px;cursor:pointer;background:#14100c;transition:border-color .15s,background .15s}
+    .a-opt:hover{border-color:var(--a-gold)}
+    .a-opt:has(input:checked){border-color:var(--a-gold);background:rgba(230,162,60,.1)}
+    .a-opt.off{opacity:.45;cursor:not-allowed}
+    .a-opt input{margin-top:4px;accent-color:#e6a23c}
+    .a-opt b{display:block;color:var(--a-text);font-size:14px}
+    .a-opt small{display:block;color:var(--a-mute);font-size:12px;margin-top:2px}
+    .a-ack{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:#d8cfbf;margin:0 0 12px}
+    .a-ack input{margin-top:3px;accent-color:#e6a23c}
+    .a-dev{margin-top:12px;border:1px dashed #6b5a3a;border-radius:6px;padding:10px 12px;font-size:12px;color:var(--a-mute)}
+    .a-dev summary{cursor:pointer}
+    .a-rvside button:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+    @@media(max-width:900px){
+        .a-pghead{padding:24px 16px 16px}
+        .a-alert,.a-okmsg{margin:16px 16px 0}
+        .a-rv{grid-template-columns:1fr;margin:24px 16px 0}
+        .a-rv::before,.a-rv::after{display:none}
+        .a-rvside{border-left:0;border-top:2px dashed #6b5a3a}
+        .a-rvfacts{grid-template-columns:100px 1fr}
+    }
+</style>
+
+<div class="a-pghead">
+    <div class="eb">BƯỚC 4 · THANH TOÁN</div>
+    <h1>@st.Movie.Title</h1>
+</div>
+
+@if (TempData["PayErr"] is string perr)
+{
+    <div class="a-alert">@perr</div>
+}
+@if (TempData["PayOk"] is string pok)
+{
+    <div class="a-okmsg">@pok</div>
+}
+@if (!seatsOk)
+{
+    <div class="a-alert">
+        Ghế của bạn không còn được giữ. <a href="/Booking/Seats/@Model.ShowtimeId">Chọn lại ghế</a>.
+    </div>
+}
+
+<div class="a-rv">
+    <div class="a-rvmain">
+        <h3>Đơn của bạn</h3>
+        <dl class="a-rvfacts">
+            <dt>Rạp</dt><dd>@st.Room.Cinema.Name</dd>
+            <dt>Suất chiếu</dt><dd>@start.ToString("HH:mm") · @start.ToString("dd/MM/yyyy")</dd>
+            <dt>Phòng</dt><dd>@st.Room.Name (@st.Room.Type) · @st.Format · @st.LanguageMode</dd>
+            <dt>Ghế</dt>
+            <dd>@foreach (var l in labels) { <span class="a-chipseat">@l</span> }</dd>
+            <dt>Loại vé</dt><dd>@string.Join(", ", ticketGroups)</dd>
+            <dt>Bắp nước</dt>
+            <dd>
+                @if (Model.Items.Count > 0)
+                {
+                    foreach (var i in Model.Items) { <div>@i.Quantity × @i.Product.Name</div> }
+                }
+                else { <span class="a-muted">Không chọn</span> }
+            </dd>
+            <dt>Tiền vé</dt><dd>@seatsTotal.ToString("N0") đ</dd>
+            <dt>Tiền bắp nước</dt><dd>@itemsTotal.ToString("N0") đ</dd>
+            @if (memberDisc > 0)
+            {
+                <dt>Ưu đãi hạng</dt><dd class="a-disc">− @memberDisc.ToString("N0") đ (hạng @memberTier, giảm bắp nước)</dd>
+            }
+            @if (discount > 0)
+            {
+                <dt>Giảm giá</dt><dd class="a-disc">− @discount.ToString("N0") đ (mã @vcode)</dd>
+            }
+            <dt>Tổng cộng</dt><dd><b class="a-rvtotal">@finalTotal.ToString("N0") đ</b></dd>
+        </dl>
+
+        <div class="a-vc">
+            <div class="lb">MÃ GIẢM GIÁ</div>
+            @if (!string.IsNullOrEmpty(vcode))
+            {
+                <div class="a-vcon">
+                    <span>Mã <b>@vcode</b> đã áp dụng · giảm @discount.ToString("N0") đ</span>
+                    <form asp-action="RemoveVoucher" asp-route-id="@Model.Id" method="post">
+                        <button type="submit" class="a-vclink">Gỡ mã</button>
+                    </form>
+                </div>
+            }
+            else
+            {
+                <form asp-action="ApplyVoucher" asp-route-id="@Model.Id" method="post" class="a-vcform">
+                    <input type="text" name="code" placeholder="Nhập mã giảm giá" maxlength="30" autocomplete="off" />
+                    <button type="submit" class="a-btn ghost" style="padding:8px 16px">Áp dụng</button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="a-rvside">
+        <div class="a-timerlabel">Thời gian giữ ghế còn lại</div>
+        <div class="a-timer" id="pg-count" data-left="@left">--:--</div>
+
+        <form asp-action="Choose" asp-route-id="@Model.Id" method="post" id="choose-form">
+            <div class="a-methods">
+                <label class="a-opt @(transferOk ? "" : "off")">
+                    <input type="radio" name="method" value="Transfer" @(transferOk ? "checked" : "disabled") />
+                    <span>
+                        <b>Chuyển khoản QR</b>
+                        <small>
+                            @if (transferOk) { <text>Quét mã bằng app ngân hàng. Giữ ghế @transferMinutes phút sau khi bạn chọn. Rạp xác nhận khi nhận được tiền.</text> }
+                            else if (!bankReady) { <text>Chưa cấu hình tài khoản nhận tiền.</text> }
+                            else { <text>Suất chiếu quá gần, không áp dụng.</text> }
+                        </small>
+                    </span>
+                </label>
+                <label class="a-opt @(cashOk ? "" : "off")">
+                    <input type="radio" name="method" value="Cash" @(cashOk ? (transferOk ? "" : "checked") : "disabled") />
+                    <span>
+                        <b>Tiền mặt tại quầy</b>
+                        <small>
+                            @if (cashOk) { <text>Giữ vé đến @cashUntil.ToString("HH:mm"). Đến quầy đọc mã đặt vé để thanh toán.</text> }
+                            else if (ViewBag.CashBlocked == true) { <text>Tạm khóa trả tiền mặt vì nhiều lần giữ vé mà không đến thanh toán.</text> }
+                            else { <text>Không áp dụng cho đơn này (quá @cashMaxSeats ghế hoặc suất chiếu quá gần).</text> }
+                        </small>
+                    </span>
+                </label>
+            </div>
+
+            <label class="a-ack">
+                <input type="checkbox" name="agree" value="1" />
+                <span>
+                    Tôi đã đọc và đồng ý: vé đã thanh toán <b>không đổi, không hoàn</b>.
+                    Vé không thanh toán đúng hạn sẽ bị hủy và ghế được nhả.
+                    Với vé trẻ em, nhân viên có thể kiểm tra khi vào rạp.
+                </span>
+            </label>
+
+            <button type="submit" class="a-btn a-block" @(transferOk || cashOk ? "" : "disabled")>Tiếp tục</button>
+        </form>
+
+        @if (simOn)
+        {
+            <details class="a-dev">
+                <summary>Công cụ thử nghiệm (chỉ có ở máy phát triển)</summary>
+                <form asp-action="Confirm" asp-route-id="@Model.Id" method="post" style="margin-top:10px">
+                    <div class="a-methods">
+                        <label class="a-opt"><input type="radio" name="method" value="Card" checked /> <span>Thẻ ATM / Visa (giả lập)</span></label>
+                        <label class="a-opt"><input type="radio" name="method" value="Wallet" /> <span>Ví điện tử (giả lập)</span></label>
+                    </div>
+                    <label class="a-ack">
+                        <input type="checkbox" name="agree" value="1" />
+                        <span>Tôi đồng ý chính sách vé (không đổi, không hoàn).</span>
+                    </label>
+                    <button type="submit" name="outcome" value="success" class="a-btn ghost a-block" style="padding:8px" @(seatsOk ? "" : "disabled")>Thanh toán thành công (giả lập)</button>
+                    <button type="submit" name="outcome" value="fail" class="a-btn ghost a-block" style="padding:8px;margin-top:8px" @(seatsOk ? "" : "disabled")>Giả lập thanh toán thất bại</button>
+                </form>
+            </details>
+        }
+
+        <a href="/Booking/Review/@Model.Id" style="display:block;margin-top:6px;text-align:center;font-size:13px">← Quay lại đơn</a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var el = document.getElementById('pg-count');
+            var left = parseInt(el.getAttribute('data-left'), 10) || 0;
+            function two(n) { return (n < 10 ? '0' : '') + n; }
+            function tick() {
+                if (left <= 0) {
+                    el.textContent = '00:00';
+                    el.classList.add('over');
+                    document.querySelectorAll('button[type=submit]').forEach(function (b) { b.disabled = true; });
+                    return;
+                }
+                el.textContent = two(Math.floor(left / 60)) + ':' + two(left % 60);
+                if (left <= 60) el.classList.add('warn');
+                left--;
+                setTimeout(tick, 1000);
+            }
+            tick();
+
+            // Chống bấm đúp
+            document.querySelectorAll('form').forEach(function (f) {
+                f.addEventListener('submit', function () {
+                    setTimeout(function () {
+                        f.querySelectorAll('button[type=submit]').forEach(function (b) { b.disabled = true; });
+                    }, 0);
+                });
+            });
+        })();
+    </script>
+}

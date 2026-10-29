@@ -1,0 +1,116 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Bảo mật tài khoản";
+    ViewData["Dark"] = true;
+    bool enabled = ViewBag.Enabled == true;
+    string? codes = ViewBag.Codes as string;
+    string? msg = ViewBag.Msg as string;
+    string? err = ViewBag.Err as string;
+    string? key = ViewBag.Key as string;
+    string? qr = ViewBag.Qr as string;
+    int remaining = ViewBag.Remaining is int r ? r : 0;
+}
+
+<style>
+    .tf-head{margin:0 0 16px;max-width:760px}
+    .tf-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .tf-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .tf-head p{margin:0;font-size:14px;color:var(--a-mute);line-height:1.6}
+    .tf-alert{max-width:760px;margin:0 0 14px;padding:12px 16px;border:1px solid #6b5a3a;border-left:4px solid var(--a-gold);border-radius:8px;background:var(--a-bg2);color:var(--a-text);font-size:14px}
+    .tf-alert.bad{border-left-color:var(--a-wine);color:#ffd9de}
+    .tf-card{max-width:760px;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:20px 22px;margin:0 0 16px}
+    .tf-card h2{margin:0 0 8px;font-size:17px;font-weight:800;color:var(--a-gold)}
+    .tf-card p{margin:0 0 10px;font-size:14px;line-height:1.7;color:var(--a-text)}
+    .tf-badge{display:inline-block;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid #6b5a3a;color:var(--a-gold)}
+    .tf-badge.on{border-color:#2e8b57;color:#7be0a4}
+    .tf-setup{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+    .tf-qr{background:#fff;padding:10px;border-radius:8px;width:200px;height:200px;box-sizing:border-box}
+    .tf-qr img{width:100%;height:100%;display:block}
+    .tf-key{font-family:ui-monospace,Consolas,monospace;font-size:15px;letter-spacing:1px;background:#14100c;border:1px solid #6b5a3a;border-radius:6px;padding:8px 12px;color:var(--a-text);word-break:break-all}
+    .tf-f{margin:10px 0 0}
+    .tf-f label{display:block;font-size:12px;letter-spacing:1px;color:var(--a-mute);margin:0 0 6px}
+    .tf-f input{width:100%;max-width:280px;box-sizing:border-box;background:#14100c;border:1px solid #6b5a3a;border-radius:6px;color:var(--a-text);padding:9px 12px;font-size:15px}
+    .tf-f input:focus{outline:none;border-color:var(--a-gold)}
+    .tf-codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:420px;margin:10px 0}
+    .tf-codes span{font-family:ui-monospace,Consolas,monospace;background:#14100c;border:1px solid #6b5a3a;border-radius:6px;padding:7px 10px;text-align:center;color:var(--a-text)}
+    .tf-note{font-size:13px;color:var(--a-mute)}
+    @@media(max-width:600px){
+        .tf-codes{grid-template-columns:1fr}
+    }
+</style>
+
+<div class="tf-head">
+    <div class="eb">TÀI KHOẢN · BẢO MẬT</div>
+    <h1>Xác thực 2 lớp</h1>
+    <p>Ngoài mật khẩu, mỗi lần đăng nhập bạn nhập thêm mã 6 số đổi sau mỗi 30 giây từ ứng dụng trên điện thoại. Dù mật khẩu bị lộ, kẻ xấu vẫn không vào được trang quản trị.</p>
+</div>
+
+@if (!string.IsNullOrEmpty(msg)) { <div class="tf-alert">@msg</div> }
+@if (!string.IsNullOrEmpty(err)) { <div class="tf-alert bad">@err</div> }
+
+@if (!string.IsNullOrEmpty(codes))
+{
+    <div class="tf-card">
+        <h2>Mã khôi phục (chỉ hiện một lần)</h2>
+        <p>Nếu mất điện thoại, bạn đăng nhập bằng một trong các mã này (mỗi mã dùng được một lần). Hãy chép ra giấy hoặc trình quản lý mật khẩu và cất cẩn thận.</p>
+        <div class="tf-codes">
+            @foreach (var c in codes.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                <span>@c</span>
+            }
+        </div>
+    </div>
+}
+
+<div class="tf-card">
+    <h2>Trạng thái: <span class="tf-badge @(enabled ? "on" : "")">@(enabled ? "Đang bật" : "Chưa bật")</span></h2>
+
+    @if (!enabled)
+    {
+        <p><b>Bước 1.</b> Mở ứng dụng Google Authenticator (hoặc Microsoft Authenticator, Authy) trên điện thoại, chọn thêm tài khoản rồi quét mã QR này:</p>
+        <div class="tf-setup">
+            <div class="tf-qr"><img src="@qr" alt="Mã QR xác thực 2 lớp" /></div>
+            <div>
+                <p class="tf-note">Không quét được? Nhập tay khóa này vào ứng dụng (loại theo thời gian):</p>
+                <div class="tf-key">@key</div>
+            </div>
+        </div>
+        <p style="margin-top:16px"><b>Bước 2.</b> Nhập mã 6 số đang hiện trong ứng dụng để xác nhận:</p>
+        <form method="post" action="/Account/TwoFactor/Enable">
+            @Html.AntiForgeryToken()
+            <div class="tf-f">
+                <label>MÃ 6 SỐ</label>
+                <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required />
+            </div>
+            <div style="margin-top:14px"><button type="submit" class="a-btn">Bật xác thực 2 lớp</button></div>
+        </form>
+    }
+    else
+    {
+        <p>Tài khoản của bạn đang được bảo vệ. Còn <b>@remaining</b> mã khôi phục chưa dùng.</p>
+
+        <h2 style="margin-top:18px">Tạo lại mã khôi phục</h2>
+        <form method="post" action="/Account/TwoFactor/NewCodes">
+            @Html.AntiForgeryToken()
+            <div class="tf-f">
+                <label>MÃ 6 SỐ TRONG ỨNG DỤNG</label>
+                <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required />
+            </div>
+            <div style="margin-top:12px"><button type="submit" class="a-btn ghost">Tạo bộ mã mới</button></div>
+        </form>
+
+        <h2 style="margin-top:22px">Tắt xác thực 2 lớp</h2>
+        <form method="post" action="/Account/TwoFactor/Disable" onsubmit="return confirm('Tắt xác thực 2 lớp? Tài khoản sẽ chỉ còn bảo vệ bằng mật khẩu.')">
+            @Html.AntiForgeryToken()
+            <div class="tf-f">
+                <label>MẬT KHẨU</label>
+                <input type="password" name="password" autocomplete="current-password" required />
+            </div>
+            <div class="tf-f">
+                <label>MÃ 6 SỐ TRONG ỨNG DỤNG</label>
+                <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required />
+            </div>
+            <div style="margin-top:12px"><button type="submit" class="a-btn ghost">Tắt</button></div>
+        </form>
+    }
+</div>

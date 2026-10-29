@@ -1,0 +1,111 @@
+@using CinemaApp.Controllers
+@using CinemaApp.Models
+@model List<AdminCinemaRow>
+@{
+    ViewData["Title"] = "Rạp chiếu";
+    ViewData["Dark"] = true;
+    var msg = TempData["AdminMsg"] as string;
+    string q = ViewBag.Q as string ?? "";
+    int? cityId = ViewBag.CityId;
+    int pageNo = ViewBag.Page;
+    int pages = ViewBag.Pages;
+    int total = ViewBag.Total;
+    var cities = (List<City>)ViewBag.Cities;
+    string Link(int p) => "/Admin/Cinemas?page=" + p + (q.Length > 0 ? "&q=" + Uri.EscapeDataString(q) : "") + (cityId.HasValue ? "&cityId=" + cityId : "");
+}
+
+<style>
+    .cin-head{margin:0 0 16px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;max-width:1000px}
+    .cin-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .cin-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .cin-head p{margin:0;font-size:14px;color:var(--a-mute)}
+    .cin-alert{max-width:1000px;margin:0 0 14px;padding:12px 16px;border:1px solid #6b5a3a;border-left:4px solid var(--a-gold);border-radius:8px;background:var(--a-bg2);color:var(--a-text);font-size:14px}
+    .cin-search{display:flex;gap:10px;max-width:1000px;margin:0 0 12px;flex-wrap:wrap}
+    .cin-search input[type=text],.cin-search select{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:8px;color:var(--a-text);padding:10px 12px;font-size:14px}
+    .cin-search input[type=text]{flex:1;min-width:180px}
+    .cin-count{max-width:1000px;margin:0 0 10px;font-size:13px;color:var(--a-mute)}
+    .cin-table{width:100%;max-width:1000px;border-collapse:collapse;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;overflow:hidden}
+    .cin-table th{text-align:left;font-size:12px;letter-spacing:1px;color:var(--a-mute);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--a-line)}
+    .cin-table td{padding:10px 14px;border-bottom:1px solid var(--a-line);font-size:14px;color:var(--a-text);vertical-align:middle}
+    .cin-table tr:last-child td{border-bottom:0}
+    .cin-name{font-weight:700}
+    .cin-sub{font-size:12px;color:var(--a-mute)}
+    .cin-act{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .cin-act form{margin:0}
+    .cin-link{background:none;border:0;color:var(--a-gold);text-decoration:underline;cursor:pointer;font-size:13px;padding:0}
+    .cin-link.del{color:#ff8a98}
+    .cin-pager{display:flex;gap:10px;align-items:center;max-width:1000px;margin:14px 0 0;font-size:13px;color:var(--a-mute)}
+    .cin-pager a{border:1px solid #6b5a3a;border-radius:6px;padding:5px 12px;color:var(--a-gold);text-decoration:none}
+    @@media(max-width:700px){
+        .cin-table th:nth-child(3),.cin-table td:nth-child(3){display:none}
+    }
+</style>
+
+<div class="cin-head">
+    <div>
+        <div class="eb">QUẢN TRỊ · RẠP</div>
+        <h1>Rạp chiếu &amp; phòng</h1>
+        <p>Thêm rạp, thêm phòng và sơ đồ ghế. Rạp hoặc phòng đã có suất chiếu thì không xóa được.</p>
+    </div>
+    <a href="/Admin/Cinemas/New" class="a-btn">+ Thêm rạp</a>
+</div>
+
+@if (!string.IsNullOrEmpty(msg))
+{
+    <div class="cin-alert">@msg</div>
+}
+
+<form method="get" action="/Admin/Cinemas" class="cin-search">
+    <input type="text" name="q" value="@q" placeholder="Tìm theo tên rạp hoặc địa chỉ" />
+    <select name="cityId">
+        <option value="">Tất cả thành phố</option>
+        @foreach (var c in cities)
+        {
+            <option value="@c.Id" selected="@(cityId == c.Id)">@c.Name</option>
+        }
+    </select>
+    <button class="a-btn" type="submit">Tìm</button>
+</form>
+
+<div class="cin-count">@total rạp</div>
+
+<table class="cin-table">
+    <thead><tr><th>RẠP</th><th>THÀNH PHỐ</th><th>PHÒNG / GHẾ</th><th>SUẤT CHIẾU</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        <tr>
+            <td>
+                <div class="cin-name">@r.Name</div>
+                <div class="cin-sub">@r.Address · @r.Hotline</div>
+            </td>
+            <td>@r.City</td>
+            <td>@r.Rooms phòng · @r.Seats ghế</td>
+            <td>@r.Upcoming sắp tới<div class="cin-sub">tổng @r.Showtimes</div></td>
+            <td>
+                <div class="cin-act">
+                    <a class="cin-link" href="/Admin/Cinemas/Rooms/@r.Id">Phòng</a>
+                    <a class="cin-link" href="/Admin/Cinemas/Edit/@r.Id">Sửa</a>
+                    <form method="post" action="/Admin/Cinemas/Delete/@r.Id" onsubmit="return confirm('Xóa rạp này cùng các phòng và ghế của nó?')">
+                        @Html.AntiForgeryToken()
+                        <button class="cin-link del" type="submit">Xóa</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+    }
+    @if (Model.Count == 0)
+    {
+        <tr><td colspan="5" style="color:var(--a-mute)">Không có rạp nào phù hợp.</td></tr>
+    }
+    </tbody>
+</table>
+
+@if (pages > 1)
+{
+    <div class="cin-pager">
+        @if (pageNo > 1) { <a href="@Link(pageNo - 1)">‹ Trước</a> }
+        <span>Trang @pageNo / @pages</span>
+        @if (pageNo < pages) { <a href="@Link(pageNo + 1)">Sau ›</a> }
+    </div>
+}

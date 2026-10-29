@@ -1,0 +1,83 @@
+@using CinemaApp.Controllers
+@model ProductForm
+@{
+    bool isNew = Model.Id == 0;
+    ViewData["Title"] = isNew ? "Thêm sản phẩm" : "Sửa sản phẩm";
+    ViewData["Dark"] = true;
+    string? error = ViewBag.Error as string;
+}
+
+<style>
+    .pre-wrap{max-width:640px}
+    .pre-wrap .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .pre-wrap h1{font-size:28px;font-weight:800;margin:4px 0 16px;color:var(--a-text)}
+    .pre-err{margin:0 0 14px;padding:12px 16px;border:1px solid #7a2e38;border-left:4px solid #ff8a98;border-radius:8px;background:var(--a-bg2);color:#ffb3bd;font-size:14px}
+    .pre-card{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:20px}
+    .pre-card label{display:block;font-size:13px;color:var(--a-mute);margin:14px 0 6px}
+    .pre-card label:first-child{margin-top:0}
+    .pre-card input[type=text],.pre-card input[type=number],.pre-card input[type=file],.pre-card textarea{width:100%;background:#14100c;border:1px solid var(--a-line);border-radius:8px;color:var(--a-text);padding:10px 12px;font-size:14px;box-sizing:border-box}
+    .pre-card textarea{min-height:70px;resize:vertical}
+    .pre-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .pre-hint{font-size:12px;color:var(--a-mute);margin-top:4px}
+    .pre-check{display:flex;gap:8px;align-items:center;margin-top:14px;color:var(--a-text);font-size:14px}
+    .pre-check input{width:auto}
+    .pre-img{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--a-line);margin:0 0 8px;display:block}
+    .pre-act{display:flex;gap:12px;align-items:center;margin-top:20px}
+    .pre-act a{color:var(--a-mute);font-size:14px}
+</style>
+
+<div class="pre-wrap">
+    <div class="eb">QUẢN TRỊ · BẮP NƯỚC</div>
+    <h1>@(isNew ? "Thêm sản phẩm" : "Sửa sản phẩm")</h1>
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="pre-err">@error</div>
+    }
+
+    <form method="post" action="/Admin/Products/Save" enctype="multipart/form-data" class="pre-card">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Id" value="@Model.Id" />
+
+        <label for="Name">Tên sản phẩm</label>
+        <input type="text" id="Name" name="Name" maxlength="80" value="@Model.Name" required />
+
+        <label for="Description">Mô tả</label>
+        <textarea id="Description" name="Description" maxlength="200">@Model.Description</textarea>
+
+        <div class="pre-row">
+            <div>
+                <label for="Price">Giá (đ)</label>
+                <input type="number" id="Price" name="Price" value="@((long)Model.Price)" min="1000" max="2000000" step="1000" required />
+                <div class="pre-hint">Bội số của 1.000 đ</div>
+            </div>
+            <div>
+                <label for="SortOrder">Thứ tự hiển thị</label>
+                <input type="number" id="SortOrder" name="SortOrder" value="@Model.SortOrder" min="0" max="9999" />
+                <div class="pre-hint">Số nhỏ hiện trước</div>
+            </div>
+        </div>
+
+        <label for="Badge">Nhãn (tùy chọn)</label>
+        <input type="text" id="Badge" name="Badge" maxlength="20" value="@Model.Badge" placeholder="Bán chạy, Mới..." />
+
+        <label for="image">Ảnh sản phẩm</label>
+        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+        {
+            <img class="pre-img" src="@Model.ImageUrl" alt="" />
+            <div class="pre-check"><input type="checkbox" id="removeImage" name="removeImage" value="true" /><label for="removeImage" style="margin:0">Gỡ ảnh hiện tại</label></div>
+        }
+        <input type="file" id="image" name="image" accept="image/png,image/jpeg,image/webp" />
+        <div class="pre-hint">PNG, JPG hoặc WEBP, tối đa 2 MB. Chọn ảnh mới sẽ thay ảnh cũ.</div>
+
+        <div class="pre-check">
+            <input type="checkbox" id="IsActive" name="IsActive" value="true" @(Model.IsActive ? "checked" : "") />
+            <label for="IsActive" style="margin:0">Đang bán (hiện ở bước chọn bắp nước)</label>
+        </div>
+
+        <div class="pre-act">
+            <button class="a-btn" type="submit">Lưu</button>
+            <a href="/Admin/Products">Hủy</a>
+        </div>
+    </form>
+</div>

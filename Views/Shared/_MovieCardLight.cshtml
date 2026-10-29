@@ -1,0 +1,27 @@
+@model CinemaApp.Models.Movie
+
+<article class="lh-card st-tilt">
+    <div class="lh-poster">
+        <a href="/Movies/Details/@Model.Id"><img src="@Model.PosterUrl" alt="@Model.Title" loading="lazy" /></a>
+        <span class="lh-age age-@Model.AgeRating">@Model.AgeRating</span>
+        @if (!string.IsNullOrEmpty(Model.TrailerUrl))
+        {
+            <button type="button" class="lh-play" data-bs-toggle="modal" data-bs-target="#trailerModal"
+                    data-trailer="@Model.TrailerUrl" aria-label="Xem trailer @Model.Title">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            </button>
+        }
+    </div>
+    <div class="lh-card-body">
+        <h3 title="@Model.Title"><a href="/Movies/Details/@Model.Id">@Model.Title</a></h3>
+        <div class="lh-meta">@(Model.DurationMin > 0 ? $"{Model.DurationMin} phút" : "Đang cập nhật") · @Model.ReleaseDate.ToString("dd/MM/yyyy")</div>
+        @if (Model.Status == "NowShowing")
+        {
+            <a href="/Movies/Details/@Model.Id#lich-chieu" class="st-btn primary sm">Mua vé</a>
+        }
+        else
+        {
+            <a href="/Movies/Details/@Model.Id" class="st-btn ghost sm">Chi tiết</a>
+        }
+    </div>
+</article>

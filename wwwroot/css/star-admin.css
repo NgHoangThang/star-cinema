@@ -1,0 +1,273 @@
+/* ===== STAR ADMIN: khung quản trị ===== */
+body.ad {
+  background: #0b0907;
+  color: var(--a-text);
+  margin: 0;
+}
+
+.ad-shell {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+/* --- Cột menu bên trái --- */
+.ad-side {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  background: linear-gradient(180deg, #15110d 0%, #0e0c0a 100%);
+  border-right: 1px solid var(--a-line);
+}
+.ad-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px 18px;
+  text-decoration: none;
+  color: var(--a-text);
+  border-bottom: 1px solid var(--a-line);
+}
+.ad-brand span {
+  font-weight: 800;
+  letter-spacing: 2px;
+  font-size: 15px;
+  line-height: 1.15;
+}
+.ad-brand b {
+  color: var(--a-gold);
+  font-weight: 800;
+}
+.ad-brand small {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--a-mute);
+  font-weight: 500;
+  margin-top: 3px;
+}
+.ad-group {
+  margin-top: 20px;
+}
+.ad-group h6 {
+  margin: 0 12px 8px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #7d7262;
+  font-weight: 600;
+}
+.ad-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 3px;
+  border-radius: 8px;
+  color: var(--a-mute);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+.ad-link svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+}
+.ad-link:hover {
+  color: var(--a-gold2);
+  background: rgba(230, 162, 60, 0.07);
+}
+.ad-link.active {
+  color: var(--a-gold);
+  background: rgba(230, 162, 60, 0.12);
+  border-color: rgba(230, 162, 60, 0.35);
+}
+.ad-side-foot {
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--a-line);
+}
+
+/* --- Thanh trên cùng --- */
+.ad-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ad-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 64px;
+  padding: 0 32px;
+  background: rgba(14, 12, 10, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--a-line);
+}
+.ad-crumb {
+  font-size: 13px;
+  color: var(--a-mute);
+}
+.ad-crumb i {
+  font-style: normal;
+  margin: 0 6px;
+  color: #5b5143;
+}
+.ad-crumb b {
+  color: var(--a-text);
+  font-weight: 700;
+}
+.ad-top-r {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ad-user {
+  font-size: 13px;
+  color: var(--a-mute);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ad-out {
+  background: none;
+  border: 1px solid #6b5a3a;
+  color: var(--a-gold);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.ad-out:hover {
+  border-color: var(--a-gold);
+  background: rgba(230, 162, 60, 0.08);
+}
+.ad-burger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 38px;
+  height: 38px;
+  padding: 0 9px;
+  background: none;
+  border: 1px solid #6b5a3a;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ad-burger span {
+  display: block;
+  height: 2px;
+  background: var(--a-gold);
+  border-radius: 2px;
+}
+.ad-overlay {
+  display: none;
+}
+
+/* --- Vùng nội dung: rộng toàn màn hình --- */
+.ad-content {
+  width: 100%;
+  max-width: 1560px;
+  padding: 28px 32px 56px;
+}
+
+/* Các trang cũ có khối tiêu đề riêng: thu gọn cho vừa khung mới */
+.ad-content .a-pghead,
+.ad-content .av-head,
+.ad-content .pg-head {
+  padding: 0 0 18px;
+  margin: 0 0 24px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--a-line);
+  max-width: none;
+}
+.ad-content .a-pghead h1,
+.ad-content .av-head h1,
+.ad-content .pg-head h1 {
+  font-size: 28px;
+  margin: 4px 0 4px;
+}
+.ad-content .a-adm {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+}
+.ad-content .av-wrap {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+.ad-content .av-msg {
+  max-width: none;
+  margin: 0 0 18px;
+}
+
+/* --- Điện thoại và máy tính bảng --- */
+@media (max-width: 960px) {
+  .ad-shell {
+    grid-template-columns: 1fr;
+  }
+  .ad-side {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 272px;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  .ad-side.open {
+    transform: translateX(0);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.7);
+  }
+  .ad-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+  }
+  .ad-overlay.open {
+    display: block;
+  }
+  .ad-burger {
+    display: flex;
+  }
+  .ad-top {
+    padding: 0 16px;
+  }
+  .ad-user {
+    display: none;
+  }
+  .ad-content {
+    padding: 20px 16px 48px;
+  }
+}
+
+.ad-brand b {
+  margin-left: 0.3em;
+}
+.ad-content {
+  max-width: none;
+}

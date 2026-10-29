@@ -1,0 +1,253 @@
+@using CinemaApp.Controllers
+@model List<AdminOrderRow>
+@{
+    ViewData["Title"] = "Đơn hàng";
+    ViewData["Dark"] = true;
+    string? status = ViewBag.Status;
+    string? code = ViewBag.Code;
+    var now = DateTime.UtcNow;
+
+    string StatusText(AdminOrderRow r) => r.Status switch
+    {
+        "Pending" => r.ExpiresAt > now ? "Đang chọn" : "Hết hạn",
+        "WaitingPayment" => r.ExpiresAt > now ? "Chờ thanh toán" : "Hết hạn",
+        "Paid" => "Đã thanh toán",
+        "Expired" => "Hết hạn",
+        "Cancelled" => "Đã hủy",
+        "Refunded" => "Đã hoàn tiền",
+        _ => r.Status
+    };
+    string StatusClass(AdminOrderRow r) => StatusText(r) switch
+    {
+        "Đã thanh toán" => "ok",
+        "Chờ thanh toán" => "wait",
+        "Đang chọn" => "info",
+        "Đã hoàn tiền" => "info",
+        "Đã hủy" => "bad",
+        _ => "off"
+    };
+    string MethodText(string? m) => m switch
+    {
+        "Card" => "Thẻ (giả lập)",
+        "Wallet" => "Ví (giả lập)",
+        "QR" or "Transfer" => "Chuyển khoản QR",
+        "Cash" => "Tiền mặt",
+        _ => "-"
+    };
+
+    int pg = ViewBag.Page;
+    int pgs = ViewBag.Pages;
+    int totalOrders = ViewBag.Total;
+    string PageHref(int p) => "/Admin/Orders?"
+        + (string.IsNullOrEmpty(status) ? "" : "status=" + Uri.EscapeDataString(status) + "&")
+        + (string.IsNullOrWhiteSpace(code) ? "" : "code=" + Uri.EscapeDataString(code) + "&")
+        + "page=" + p;
+
+    var chips = new (string Label, string? Value)[]
+    {
+        ("Tất cả", null),
+        ("Chờ thanh toán", "WaitingPayment"),
+        ("Đã thanh toán", "Paid"),
+        ("Yêu cầu hủy", "CancelRequested"),
+        ("Đang chọn", "Pending"),
+        ("Hết hạn", "Expired"),
+        ("Đã hủy", "Cancelled"),
+        ("Đã hoàn tiền", "Refunded")
+    };
+}
+
+<style>
+    .od-head{margin:0 0 20px}
+    .od-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .od-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .od-head p{margin:0;color:var(--a-mute);font-size:14px}
+
+    .od-msg{margin:0 0 16px;padding:12px 16px;border:1px solid var(--a-gold);border-left:4px solid var(--a-gold);border-radius:6px;background:var(--a-bg2);color:var(--a-text);font-size:14px}
+    .od-note{margin:0 0 18px;padding:12px 16px;border:1px dashed #6b5a3a;border-radius:8px;background:rgba(230,162,60,.06);color:#e9d9b8;font-size:13px;line-height:1.55}
+
+    .od-bar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .od-chips{display:flex;flex-wrap:wrap;gap:8px}
+    .od-chip{padding:8px 16px;border-radius:999px;border:1px solid var(--a-line);background:var(--a-bg2);color:var(--a-mute);font-size:13px;font-weight:600;text-decoration:none;transition:border-color .15s,color .15s,background .15s}
+    .od-chip:hover{border-color:#6b5a3a;color:var(--a-gold2)}
+    .od-chip.active{border-color:var(--a-gold);color:var(--a-gold);background:rgba(230,162,60,.12)}
+    .od-search{display:flex;gap:8px}
+    .od-search input{width:260px;max-width:100%;background:#14100c;border:1px solid #6b5a3a;border-radius:8px;color:var(--a-text);padding:9px 12px;font-size:14px}
+    .od-search input:focus{outline:none;border-color:var(--a-gold)}
+    .od-count{margin:0 0 12px;color:var(--a-mute);font-size:13px}
+    .od-count b{color:var(--a-text)}
+
+    .od-card{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;overflow:hidden}
+    .od-wrap{overflow-x:auto}
+    .od-table{width:100%;min-width:1120px;border-collapse:collapse;font-size:14px}
+    .od-table th{text-align:left;font-size:11px;letter-spacing:1px;color:var(--a-mute);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--a-line);background:rgba(0,0,0,.2);white-space:nowrap}
+    .od-table td{padding:14px;border-bottom:1px solid var(--a-line);color:var(--a-text);vertical-align:middle}
+    .od-table tr:last-child td{border-bottom:0}
+    .od-table tr:hover td{background:rgba(230,162,60,.03)}
+    .od-table tr.act td:first-child{box-shadow:inset 3px 0 0 var(--a-gold)}
+    .od-table small{display:block;color:var(--a-mute);font-size:12px;margin-top:2px}
+    .od-code{font-weight:800;letter-spacing:1px;color:var(--a-gold2);white-space:nowrap}
+    .od-nw{white-space:nowrap}
+    .od-mut{color:var(--a-mute)}
+    .od-movie{font-weight:600;min-width:170px}
+    .od-money{font-weight:700;white-space:nowrap}
+
+    .od-b{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid;white-space:nowrap}
+    .od-b.ok{color:#7ee2a0;border-color:#2f7d4f;background:rgba(47,125,79,.12)}
+    .od-b.wait{color:#ffd27a;border-color:#a67a22;background:rgba(230,162,60,.12)}
+    .od-b.info{color:#8fc5ff;border-color:#2f5f9a;background:rgba(47,95,154,.14)}
+    .od-b.bad{color:#ff8f9d;border-color:#8f2a3a;background:rgba(164,19,43,.12)}
+    .od-b.off{color:var(--a-mute);border-color:#4a4034}
+
+    .od-actions{display:flex;gap:8px;flex-wrap:nowrap}
+     .od-actions form{margin:0;display:flex;gap:6px;align-items:center} .od-in{width:150px;background:#14100c;border:1px solid #6b5a3a;border-radius:8px;color:var(--a-text);padding:7px 10px;font-size:13px}
+    .od-btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;border:1px solid}
+    .od-btn.ok{background:#e6a23c;border-color:#e6a23c;color:#1a1208}
+    .od-btn.ok:hover{background:#ffd27a;border-color:#ffd27a}
+    .od-btn.no{background:none;border-color:#8f2a3a;color:#ff8f9d}
+    .od-btn.no:hover{background:rgba(164,19,43,.15)}
+
+    .od-pager{display:flex;gap:14px;align-items:center;justify-content:center;margin:18px 0 4px;color:var(--a-mute);font-size:13px}
+    .od-pager a,.od-pager span.dis{padding:7px 16px;border-radius:999px;border:1px solid var(--a-line);background:var(--a-bg2);color:var(--a-gold);text-decoration:none;font-weight:600}
+    .od-pager a:hover{border-color:var(--a-gold)}
+    .od-pager span.dis{opacity:.4;color:var(--a-mute)}
+
+    .od-empty{padding:48px 16px;text-align:center;color:var(--a-mute);font-size:14px}
+</style>
+
+<div class="od-head">
+    <div class="eb">QUẢN TRỊ</div>
+    <h1>Đơn hàng</h1>
+    <p>Duyệt thanh toán, tìm đơn theo mã vé, hoàn tiền và xem lịch sử đặt vé.</p>
+</div>
+
+@if (TempData["AdminMsg"] is string amsg)
+{
+    <div class="od-msg">@amsg</div>
+}
+
+<div class="od-note">
+    <b>Chỉ bấm "Đã nhận tiền" sau khi đối chiếu sao kê:</b> đúng số tiền, đúng mã đơn trong nội dung chuyển khoản.
+    Tiền mặt: chỉ bấm sau khi nhân viên đã thu tiền tại quầy. Mọi lần duyệt, hoàn tiền đều được ghi lại tên bạn và giờ thao tác.
+    <b>Hoàn tiền</b> chỉ làm được khi suất chưa chiếu và vé chưa quét; hệ thống trả ghế lại, còn tiền bạn tự chuyển trả khách.
+</div>
+
+@if (ViewBag.CancelPending is int cancelPending && cancelPending > 0)
+{
+    <div class="od-note" style="border-style:solid;border-color:#a67a22">
+        Có <b>@cancelPending</b> khách đang <b>yêu cầu hủy vé</b>. <a href="/Admin/Orders?status=CancelRequested" style="color:var(--a-gold)">Xem danh sách</a>
+        rồi bấm Hoàn tiền nếu chấp nhận (lý do của khách tự điền sẵn).
+    </div>
+}
+
+<div class="od-bar">
+    <div class="od-chips">
+        @foreach (var c in chips)
+        {
+            var href = "/Admin/Orders" + (c.Value == null ? "" : "?status=" + c.Value);
+            <a class="od-chip @((status ?? "") == (c.Value ?? "") ? "active" : "")" href="@href">@c.Label</a>
+        }
+    </div>
+    <form method="get" action="/Admin/Orders" class="od-search">
+        <input type="hidden" name="status" value="@status" />
+        <input type="search" name="code" value="@code" placeholder="Mã đặt vé (SC...) hoặc email khách" />
+        <button type="submit" class="a-btn" style="padding:8px 18px">Tìm</button>
+    </form>
+</div>
+
+<p class="od-count">Tìm thấy <b>@totalOrders</b> đơn, trang <b>@pg</b> / @pgs (mỗi trang tối đa 30 đơn, mới nhất trước)</p>
+
+<div class="od-card">
+    @if (Model.Count == 0)
+    {
+        <div class="od-empty">Không có đơn nào khớp.</div>
+    }
+    else
+    {
+        <div class="od-wrap">
+            <table class="od-table">
+                <thead>
+                    <tr>
+                        <th>MÃ VÉ</th><th>KHÁCH</th><th>PHIM VÀ RẠP</th><th>GIỜ CHIẾU</th>
+                        <th>GHẾ</th><th>TỔNG</th><th>CÁCH TRẢ</th><th>TRẠNG THÁI</th>
+                        <th>HẠN / NGƯỜI DUYỆT</th><th>THAO TÁC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        bool canAct = r.Status == "WaitingPayment" && r.ExpiresAt > now;
+                        bool canRevive = r.Status == "Expired" && r.Method != null && r.ExpiresAt > now.AddHours(-2);
+                        bool canRefund = r.Status == "Paid" && r.StartTime > now;
+                        var start = r.StartTime.AddHours(7);
+                        <tr class="@(canAct ? "act" : "")">
+                            <td><span class="od-code">@(r.Code ?? "-")</span><small>#@r.Id</small></td>
+                            <td class="od-nw od-mut">@r.Email</td>
+                            <td><div class="od-movie">@r.Movie</div><small>@r.Cinema</small></td>
+                            <td class="od-nw">@start.ToString("HH:mm")<small>@start.ToString("dd/MM/yyyy")</small></td>
+                            <td>@r.SeatCount</td>
+                            <td class="od-money">@r.Total.ToString("N0") đ</td>
+                            <td class="od-nw">@MethodText(r.Method)</td>
+                            <td><span class="od-b @StatusClass(r)">@StatusText(r)</span>
+                                @if (r.Status == "Paid" && r.CancelRequestedAt.HasValue) { <small style="color:#ffd27a">Khách yêu cầu hủy: @r.CancelReason</small> }
+                            </td>
+                            <td class="od-nw">
+                                @if (canAct) { <text>Hạn @r.ExpiresAt.AddHours(7).ToString("HH:mm dd/MM")</text> }
+                                else if (r.ApprovedBy != null) { <text>@r.ApprovedBy<small>@(r.ApprovedAt.HasValue ? r.ApprovedAt.Value.AddHours(7).ToString("HH:mm dd/MM") : "")</small>@if (!string.IsNullOrEmpty(r.BankRef)) { <small>Mã GD: @r.BankRef</small> }</text> }
+                                else { <span class="od-mut">-</span> }
+                            </td>
+                            <td>
+                                @if (canAct)
+                                {
+                                    <div class="od-actions">
+                                        <form asp-controller="Admin" asp-action="Approve" asp-route-id="@r.Id" method="post"
+                                              onsubmit="var v = this.querySelector('[name=received]').value; return confirm('Bạn nhập ' + Number(v).toLocaleString('vi-VN') + ' đ. Đơn @r.Code cần @r.Total.ToString("N0") đ. Xác nhận ĐÃ NHẬN?');">
+                                             <input type="number" name="received" min="1" step="1" required placeholder="Số tiền nhận" class="od-in" />
+                                            @if (r.Method == "Transfer" || r.Method == "QR") { <input type="text" name="bankRef" required minlength="4" maxlength="40" placeholder="Mã giao dịch NH" class="od-in" /> }
+                                            <button type="submit" class="od-btn ok">Đã nhận tiền</button>
+                                        </form>
+                                        <form asp-controller="Admin" asp-action="Reject" asp-route-id="@r.Id" method="post"
+                                              onsubmit="return confirm('Hủy đơn @r.Code và nhả ghế?');">
+                                            <button type="submit" class="od-btn no">Hủy</button>
+                                        </form>
+                                    </div>
+                                }
+                                else if (canRevive)
+                                {
+                                    <div class="od-actions">
+                                        <form method="post" action="/Admin/Revive/@r.Id"
+                                              onsubmit="return confirm('Duyệt lại đơn @r.Code? Chỉ bấm khi bạn đã đối chiếu khách chuyển ĐỦ @r.Total.ToString("N0") đ.');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="number" name="received" min="1" step="1" required placeholder="Số tiền nhận" class="od-in" />
+                                            @if (r.Method == "Transfer" || r.Method == "QR") { <input type="text" name="bankRef" required minlength="4" maxlength="40" placeholder="Mã giao dịch NH" class="od-in" /> }
+                                            <button type="submit" class="od-btn ok">Duyệt lại</button>
+                                        </form>
+                                    </div>
+                                }
+                                else if (canRefund)
+                                {
+                                    <div class="od-actions">
+                                        <form method="post" action="/Admin/Refund/@r.Id" data-reason="@(r.CancelRequestedAt.HasValue ? "Khách yêu cầu hủy: " + r.CancelReason : "")"
+                                              onsubmit="var rs = prompt('Lý do hoàn tiền đơn @r.Code (bắt buộc):', this.dataset.reason || ''); if (!rs || rs.trim().length < 3) { return false; } this.querySelector('[name=reason]').value = rs.trim(); return confirm('Hoàn tiền đơn @r.Code? Ghế sẽ được trả lại và vé hết hiệu lực. Bạn phải tự chuyển trả @r.Total.ToString("N0") đ cho khách.');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="reason" value="" />
+                                            <button type="submit" class="od-btn no">Hoàn tiền</button>
+                                        </form>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (pgs > 1)
+{
+    <div class="od-pager">
+        @if (pg > 1) { <a href="@PageHref(pg - 1)">← Trang trước</a> } else { <span class="dis">← Trang trước</span> }
+        <span>Trang @pg / @pgs</span>
+        @if (pg < pgs) { <a href="@PageHref(pg + 1)">Trang sau →</a> } else { <span class="dis">Trang sau →</span> }
+    </div>
+}

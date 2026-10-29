@@ -1,0 +1,71 @@
+@using CinemaApp.Services
+@model InfoPage
+@{
+    ViewData["Title"] = Model.Title;
+    ViewData["Dark"] = true;
+}
+
+<style>
+    .in-head{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .in-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .in-head h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 6px;color:var(--a-text)}
+    .in-head p{margin:0;font-size:14px;color:var(--a-mute);max-width:760px;line-height:1.6}
+    .in-wrap{max-width:860px;margin:0 auto;padding:28px 24px 60px}
+    .in-sec{margin:0 0 18px;padding:20px 22px;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px}
+    .in-sec h2{margin:0 0 10px;font-size:17px;font-weight:800;color:var(--a-gold)}
+    .in-sec p{margin:0 0 10px;font-size:14px;line-height:1.7;color:var(--a-text)}
+    .in-sec p:last-child{margin-bottom:0}
+    .in-sec ul{margin:0;padding-left:20px}
+    .in-sec li{font-size:14px;line-height:1.7;color:var(--a-text);margin:0 0 6px}
+    .in-nav{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+    .in-nav a{padding:7px 14px;border-radius:999px;border:1px solid var(--a-line);background:var(--a-bg2);color:var(--a-mute);font-size:13px;text-decoration:none}
+    .in-nav a:hover{border-color:var(--a-gold);color:var(--a-gold)}
+    .in-nav a.on{border-color:var(--a-gold);color:var(--a-gold);background:rgba(230,162,60,.12)}
+    @@media(max-width:900px){
+        .in-head{padding:24px 16px 16px}
+        .in-wrap{padding:20px 16px 50px}
+    }
+</style>
+
+@{
+    var links = new (string Slug, string Label)[]
+    {
+        ("about", "Giới thiệu"), ("faq", "Câu hỏi thường gặp"), ("refund", "Đặt vé và hoàn tiền"),
+        ("terms", "Điều khoản"), ("privacy", "Bảo mật"), ("ratings", "Phân loại phim"), ("contact", "Liên hệ")
+    };
+}
+
+<div class="in-head">
+    <div class="eb">@Model.Eyebrow</div>
+    <h1>@Model.Title</h1>
+    <p>@Model.Intro</p>
+</div>
+
+<div class="in-wrap">
+    <div class="in-nav">
+        @foreach (var l in links)
+        {
+            <a href="/Info/@l.Slug" class="@(l.Slug == Model.Slug ? "on" : "")">@l.Label</a>
+        }
+    </div>
+
+    @foreach (var s in Model.Sections.Where(x => x.Paragraphs.Any(p => !string.IsNullOrWhiteSpace(p)) || (x.Bullets != null && x.Bullets.Length > 0)))
+    {
+        <div class="in-sec">
+            <h2>@s.Heading</h2>
+            @foreach (var p in s.Paragraphs.Where(t => !string.IsNullOrWhiteSpace(t)))
+            {
+                <p>@p</p>
+            }
+            @if (s.Bullets != null && s.Bullets.Length > 0)
+            {
+                <ul>
+                    @foreach (var b in s.Bullets)
+                    {
+                        <li>@b</li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+</div>

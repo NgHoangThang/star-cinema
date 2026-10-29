@@ -1,0 +1,204 @@
+@using CinemaApp.Controllers
+@using CinemaApp.Models
+@model RevenueReport
+@{
+    ViewData["Title"] = "Báo cáo doanh thu";
+    ViewData["Dark"] = true;
+    var cinemas = (List<Cinema>)ViewBag.Cinemas;
+    string today = ViewBag.Today;
+    var inv = System.Globalization.CultureInfo.InvariantCulture;
+    decimal maxDay = Model.Days.Count > 0 ? Model.Days.Max(d => d.Amount) : 0;
+    var todayD = DateTime.ParseExact(today, "yyyy-MM-dd", inv);
+    string cin = Model.CinemaId.HasValue ? "&cinemaId=" + Model.CinemaId : "";
+    string Preset(DateTime a, DateTime b) => "/Admin/Revenue?from=" + a.ToString("yyyy-MM-dd") + "&to=" + b.ToString("yyyy-MM-dd") + cin;
+    var monthStart = new DateTime(todayD.Year, todayD.Month, 1);
+    var lastMonthStart = monthStart.AddMonths(-1);
+    string Short(decimal v) => v >= 1_000_000m ? (v / 1_000_000m).ToString("0.#") + "tr" : v >= 1000m ? (v / 1000m).ToString("0") + "k" : v.ToString("0");
+    string Pct(decimal part, decimal whole) => whole > 0 ? ((double)(part / whole) * 100).ToString("0", inv) : "0";
+}
+
+<style>
+    .rv-head{margin:0 0 18px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+    .rv-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .rv-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .rv-head p{margin:0;color:var(--a-mute);font-size:14px}
+    .rv-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:14px 16px;margin:0 0 14px}
+    .rv-bar label{display:block;font-size:11px;letter-spacing:1px;color:var(--a-mute);margin:0 0 5px}
+    .rv-bar input,.rv-bar select{background:#14100c;border:1px solid #6b5a3a;border-radius:6px;color:var(--a-text);padding:8px 10px;font-size:14px}
+    .rv-chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
+    .rv-chips a{border:1px solid #6b5a3a;border-radius:999px;padding:5px 14px;font-size:13px;color:var(--a-mute);text-decoration:none}
+    .rv-chips a:hover{border-color:var(--a-gold);color:var(--a-gold)}
+    .rv-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 16px}
+    .rv-kpi{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:16px 18px}
+    .rv-kpi.main{border-color:var(--a-gold);background:rgba(230,162,60,.09)}
+    .rv-kpi span{display:block;font-size:11px;letter-spacing:.5px;color:var(--a-mute)}
+    .rv-kpi b{display:block;font-size:24px;margin:4px 0 2px;color:var(--a-text);font-weight:800}
+    .rv-kpi small{font-size:12px;color:var(--a-mute)}
+    .rv-card{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:18px 20px;margin:0 0 16px}
+    .rv-card h3{margin:0 0 4px;font-size:16px;color:var(--a-text);font-weight:700}
+    .rv-card .sub{color:var(--a-mute);font-size:12px;margin:0 0 14px}
+    .rv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    .rv-chartwrap{overflow-x:auto;padding-bottom:6px}
+    .rv-chart{display:flex;gap:6px;align-items:flex-end;height:210px;min-width:100%}
+    .rv-col{flex:1 0 26px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:5px}
+    .rv-val{font-size:10px;color:var(--a-mute);height:13px;white-space:nowrap}
+    .rv-barv{width:100%;max-width:44px;min-height:3px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#ffd27a,#e6a23c)}
+    .rv-lab{font-size:10px;color:var(--a-mute)}
+    .rv-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+    .rv-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px}
+    .rv-list .n{font-size:14px;color:var(--a-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rv-list .v{font-size:14px;color:var(--a-gold);font-weight:700;white-space:nowrap}
+    .rv-list .m{grid-column:1/-1;height:5px;border-radius:5px;background:#2a231b;overflow:hidden}
+    .rv-list .m i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#e6a23c,#ffd27a)}
+    .rv-list .s{grid-column:1/-1;font-size:12px;color:var(--a-mute);margin-top:-2px}
+    .rv-empty{color:var(--a-mute);font-size:14px}
+    .rv-split{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;text-align:center}
+    .rv-split div{border:1px solid var(--a-line);border-radius:10px;padding:10px 6px}
+    .rv-split span{display:block;font-size:11px;color:var(--a-mute)}
+    .rv-split b{display:block;font-size:15px;margin-top:3px;color:var(--a-text)}
+    @@media(max-width:1100px){.rv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rv-grid{grid-template-columns:1fr}}
+    @@media(max-width:600px){.rv-kpis{grid-template-columns:1fr}.rv-split{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+
+<div class="rv-head">
+    <div>
+        <div class="eb">QUẢN TRỊ · BÁO CÁO</div>
+        <h1>Báo cáo doanh thu</h1>
+        <p>@Model.CinemaName · từ @DateTime.ParseExact(Model.From, "yyyy-MM-dd", inv).ToString("dd/MM/yyyy") đến @DateTime.ParseExact(Model.To, "yyyy-MM-dd", inv).ToString("dd/MM/yyyy") (@Model.RangeDays ngày, giờ Việt Nam). Tính theo ngày thanh toán, đã loại đơn hoàn tiền.</p>
+    </div>
+    <a class="a-btn ghost" href="/Admin/Revenue/Csv?from=@Model.From&to=@Model.To@cin">Tải CSV các đơn</a>
+</div>
+
+<form method="get" action="/Admin/Revenue" class="rv-bar">
+    <div><label>TỪ NGÀY</label><input type="date" name="from" value="@Model.From" max="@today" /></div>
+    <div><label>ĐẾN NGÀY</label><input type="date" name="to" value="@Model.To" max="@today" /></div>
+    <div>
+        <label>RẠP</label>
+        <select name="cinemaId">
+            <option value="">Tất cả rạp</option>
+            @foreach (var c in cinemas)
+            {
+                <option value="@c.Id" selected="@(Model.CinemaId == c.Id)">@c.Name</option>
+            }
+        </select>
+    </div>
+    <button type="submit" class="a-btn">Xem báo cáo</button>
+</form>
+
+<div class="rv-chips">
+    <a href="@Preset(todayD, todayD)">Hôm nay</a>
+    <a href="@Preset(todayD.AddDays(-6), todayD)">7 ngày</a>
+    <a href="@Preset(todayD.AddDays(-29), todayD)">30 ngày</a>
+    <a href="@Preset(monthStart, todayD)">Tháng này</a>
+    <a href="@Preset(lastMonthStart, monthStart.AddDays(-1))">Tháng trước</a>
+    <a href="@Preset(new DateTime(todayD.Year, 1, 1), todayD)">Năm nay</a>
+</div>
+
+<div class="rv-kpis">
+    <div class="rv-kpi main"><span>THỰC THU</span><b>@Model.Net.ToString("N0") đ</b><small>@Model.Orders đơn đã thanh toán</small></div>
+    <div class="rv-kpi"><span>VÉ ĐÃ BÁN</span><b>@Model.Tickets</b><small>trung bình @(Model.Orders > 0 ? (Model.Tickets / (double)Model.Orders).ToString("0.0", inv) : "0") vé mỗi đơn</small></div>
+    <div class="rv-kpi"><span>GIÁ TRỊ TRUNG BÌNH MỖI ĐƠN</span><b>@Model.AvgOrder.ToString("N0") đ</b><small>thực thu chia số đơn</small></div>
+    <div class="rv-kpi"><span>TỶ LỆ LẤP ĐẦY GHẾ</span><b>@Model.Occupancy.ToString("0.#", inv)%</b><small>@Model.SoldSeats / @Model.Capacity ghế (suất đã chiếu)</small></div>
+</div>
+
+<div class="rv-card">
+    <h3>Doanh thu được tạo từ đâu</h3>
+    <div class="sub">Tiền vé + bắp nước − giảm giá = thực thu</div>
+    <div class="rv-split">
+        <div><span>TIỀN VÉ</span><b>@Model.TicketsGross.ToString("N0")</b></div>
+        <div><span>BẮP NƯỚC</span><b>@Model.FoodGross.ToString("N0")</b></div>
+        <div><span>GIẢM GIÁ (MÃ + THÀNH VIÊN)</span><b>−@Model.Discounts.ToString("N0")</b></div>
+        <div><span>THỰC THU</span><b>@Model.Net.ToString("N0")</b></div>
+        <div><span>ĐÃ HOÀN TIỀN</span><b>@Model.Refunded.ToString("N0")</b></div>
+    </div>
+    <div class="sub" style="margin:12px 0 0">Đã hoàn @Model.RefundCount đơn · @Model.ExpiredCount đơn hết hạn không thanh toán · @Model.CancelledCount đơn bị hủy (tính theo ngày tạo đơn). Bắp nước chiếm @Pct(Model.FoodGross, Model.TicketsGross + Model.FoodGross)% doanh thu gộp.</div>
+</div>
+
+<div class="rv-card">
+    <h3>Doanh thu theo ngày</h3>
+    <div class="sub">Rê chuột vào cột để xem số đơn. Kéo ngang nếu khoảng ngày dài.</div>
+    <div class="rv-chartwrap">
+        <div class="rv-chart" style="min-width:@(Model.Days.Count * 32)px">
+            @foreach (var d in Model.Days)
+            {
+                double pct = maxDay > 0 ? (double)(d.Amount / maxDay) * 100.0 : 0;
+                <div class="rv-col" title="@d.Label: @d.Amount.ToString("N0") đ · @d.Orders đơn">
+                    <div class="rv-val">@(d.Amount > 0 && Model.Days.Count <= 31 ? Short(d.Amount) : "")</div>
+                    <div class="rv-barv" style="height:@pct.ToString("0.#", inv)%"></div>
+                    <div class="rv-lab">@(Model.Days.Count <= 31 || d.Label.StartsWith("01") || d.Label.StartsWith("15") ? d.Label : "")</div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="rv-grid">
+    <div class="rv-card">
+        <h3>Phim doanh thu cao nhất</h3>
+        <div class="sub">Tối đa 10 phim, gồm cả bắp nước trong đơn</div>
+        @if (Model.Movies.Count == 0) { <div class="rv-empty">Chưa có dữ liệu.</div> }
+        else
+        {
+            <ul class="rv-list">
+                @foreach (var m in Model.Movies)
+                {
+                    <li><span class="n" title="@m.Name">@m.Name</span><span class="v">@m.Amount.ToString("N0") đ</span>
+                        <span class="m"><i style="width:@Pct(m.Amount, Model.Movies[0].Amount)%"></i></span>
+                        <span class="s">@m.Orders đơn · @m.Qty vé</span></li>
+                }
+            </ul>
+        }
+    </div>
+    <div class="rv-card">
+        <h3>@(Model.CinemaId.HasValue ? "Hình thức thanh toán" : "Rạp doanh thu cao nhất")</h3>
+        <div class="sub">@(Model.CinemaId.HasValue ? "Thực thu theo cách khách trả tiền" : "Tối đa 10 rạp")</div>
+        @{ var list2 = Model.CinemaId.HasValue ? Model.Methods : Model.Cinemas; }
+        @if (list2.Count == 0) { <div class="rv-empty">Chưa có dữ liệu.</div> }
+        else
+        {
+            <ul class="rv-list">
+                @foreach (var m in list2)
+                {
+                    <li><span class="n" title="@m.Name">@m.Name</span><span class="v">@m.Amount.ToString("N0") đ</span>
+                        <span class="m"><i style="width:@Pct(m.Amount, list2[0].Amount)%"></i></span>
+                        <span class="s">@m.Orders đơn · @m.Qty vé</span></li>
+                }
+            </ul>
+        }
+    </div>
+    <div class="rv-card">
+        <h3>Bắp nước bán chạy</h3>
+        <div class="sub">Theo doanh thu, giá chốt lúc mua</div>
+        @if (Model.Products.Count == 0) { <div class="rv-empty">Chưa có bắp nước nào được bán trong khoảng này.</div> }
+        else
+        {
+            <ul class="rv-list">
+                @foreach (var m in Model.Products)
+                {
+                    <li><span class="n" title="@m.Name">@m.Name</span><span class="v">@m.Amount.ToString("N0") đ</span>
+                        <span class="m"><i style="width:@Pct(m.Amount, Model.Products[0].Amount)%"></i></span>
+                        <span class="s">@m.Qty phần · @m.Orders đơn</span></li>
+                }
+            </ul>
+        }
+    </div>
+    @if (!Model.CinemaId.HasValue)
+    {
+        <div class="rv-card">
+            <h3>Hình thức thanh toán</h3>
+            <div class="sub">Thực thu theo cách khách trả tiền</div>
+            @if (Model.Methods.Count == 0) { <div class="rv-empty">Chưa có dữ liệu.</div> }
+            else
+            {
+                <ul class="rv-list">
+                    @foreach (var m in Model.Methods)
+                    {
+                        <li><span class="n">@m.Name</span><span class="v">@m.Amount.ToString("N0") đ</span>
+                            <span class="m"><i style="width:@Pct(m.Amount, Model.Methods[0].Amount)%"></i></span>
+                            <span class="s">@m.Orders đơn · @m.Qty vé</span></li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+</div>

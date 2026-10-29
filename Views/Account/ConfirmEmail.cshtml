@@ -1,0 +1,22 @@
+@model bool
+@{
+    ViewData["Title"] = "Xác nhận email";
+    Layout = "_AuthLayout";
+    ViewData["SideTitle"] = Model ? "Tài khoản đã sẵn sàng" : "Liên kết không dùng được";
+    ViewData["SideText"] = Model ? "Bây giờ bạn có thể đăng nhập và đặt vé." : "Hãy yêu cầu gửi lại email xác nhận.";
+}
+
+@if (Model)
+{
+    <div class="sa-big-icon">✓</div>
+    <h1>Xác nhận thành công</h1>
+    <p class="sa-sub">Tài khoản của bạn đã được kích hoạt. Bây giờ bạn có thể đăng nhập.</p>
+    <a href="/Account/Login" class="st-btn primary sa-block">Đăng nhập</a>
+}
+else
+{
+    <div class="sa-big-icon bad">!</div>
+    <h1>Liên kết không hợp lệ</h1>
+    <p class="sa-sub">Liên kết đã hết hạn hoặc đã được dùng. Hãy đăng nhập và chọn gửi lại email xác nhận.</p>
+    <a href="/Account/Login" class="st-btn primary sa-block">Đến trang đăng nhập</a>
+}

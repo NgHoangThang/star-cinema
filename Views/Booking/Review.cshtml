@@ -1,0 +1,147 @@
+@using CinemaApp.Models
+@model CinemaApp.Models.Booking
+@{
+    ViewData["Title"] = "Xác nhận đơn";
+    ViewData["Dark"] = true;
+    var st = Model.Showtime;
+    var start = st.StartTime.AddHours(7);
+    int left = Model.Status == "Pending" ? (int)Math.Max(0, (Model.ExpiresAt - DateTime.UtcNow).TotalSeconds) : 0;
+    bool active = Model.Status == "Pending" && left > 0;
+    var labels = Model.Seats
+        .OrderBy(x => x.Seat.RowLabel).ThenBy(x => x.Seat.SeatNumber)
+        .Select(x => x.Seat.RowLabel + x.Seat.SeatNumber).ToList();
+    var ticketGroups = Model.Seats
+        .GroupBy(x => TicketPricing.Get(x.TicketType).Name)
+        .Select(g => $"{g.Count()} × {g.Key}").ToList();
+    decimal seatsTotal = Model.Seats.Sum(s => s.Price);
+    decimal itemsTotal = Model.Items.Sum(i => i.UnitPrice * i.Quantity);
+    string statusText = Model.Status switch
+    {
+        "Pending" => active ? "Đang giữ ghế cho bạn" : "Hết thời gian giữ ghế",
+        "Expired" => "Hết thời gian giữ ghế",
+        "Cancelled" => "Đã hủy giữ ghế",
+        "Paid" => "Đã thanh toán",
+        _ => Model.Status
+    };
+}
+
+<style>
+    .a-pghead{padding:36px 48px 22px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .a-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .a-pghead h1{font-size:clamp(24px,3.6vw,36px);font-weight:800;margin:6px 0 0;color:var(--a-text)}
+    .a-alert{margin:16px 48px 0;padding:12px 16px;border:1px solid var(--a-wine);border-left:4px solid var(--a-wine);border-radius:4px;background:var(--a-bg2);color:#ffd9de;font-size:14px}
+    .a-rv{display:grid;grid-template-columns:minmax(0,1fr) 300px;max-width:960px;margin:32px auto 0;background:var(--a-bg2);border:1px solid var(--a-gold);border-radius:8px;position:relative;box-shadow:0 20px 60px rgba(230,162,60,.15)}
+    .a-rv::before,.a-rv::after{content:"";position:absolute;right:292px;width:16px;height:16px;border-radius:50%;background:#0e0c0a;border:1px solid var(--a-gold)}
+    .a-rv::before{top:-9px}
+    .a-rv::after{bottom:-9px}
+    .a-rvmain{padding:26px 28px}
+    .a-rvmain h3{margin:0 0 16px;font-size:20px;color:var(--a-gold)}
+    .a-rvfacts{display:grid;grid-template-columns:120px 1fr;gap:10px 16px;font-size:14px;margin:0}
+    .a-rvfacts dt{color:var(--a-mute);font-weight:400}
+    .a-rvfacts dd{margin:0;color:var(--a-text)}
+    .a-chipseat{display:inline-block;border:1px solid var(--a-gold);color:var(--a-gold);border-radius:4px;padding:2px 9px;font-size:12px;margin:0 6px 4px 0}
+    .a-muted{color:var(--a-mute)}
+    .a-rvtotal{color:var(--a-gold);font-size:24px}
+    .a-rvside{padding:26px 24px;border-left:2px dashed #6b5a3a;display:flex;flex-direction:column;gap:10px;justify-content:center}
+    .a-timerlabel{font-size:12px;color:var(--a-mute)}
+    .a-timer{font-size:38px;font-weight:800;letter-spacing:2px;color:var(--a-text);margin:0 0 6px}
+    .a-timer.warn{color:#ffb74d}
+    .a-timer.over{color:#ff6b7d}
+    .a-block{display:block;width:100%;text-align:center}
+    @@media(max-width:900px){
+        .a-pghead{padding:24px 16px 16px}
+        .a-alert{margin:16px 16px 0}
+        .a-rv{grid-template-columns:1fr;margin:24px 16px 0}
+        .a-rv::before,.a-rv::after{display:none}
+        .a-rvside{border-left:0;border-top:2px dashed #6b5a3a}
+        .a-rvfacts{grid-template-columns:100px 1fr}
+    }
+</style>
+
+<div class="a-pghead">
+    <div class="eb">BƯỚC 3 · XÁC NHẬN ĐƠN</div>
+    <h1>@st.Movie.Title</h1>
+</div>
+
+@if (TempData["BookErr"] is string err)
+{
+    <div class="a-alert">@err</div>
+}
+
+<div class="a-rv">
+    <div class="a-rvmain">
+        <h3>@statusText</h3>
+        <dl class="a-rvfacts">
+            <dt>Rạp</dt><dd>@st.Room.Cinema.Name</dd>
+            <dt>Suất chiếu</dt><dd>@start.ToString("HH:mm") · @start.ToString("dd/MM/yyyy")</dd>
+            <dt>Phòng</dt><dd>@st.Room.Name (@st.Room.Type) · @st.Format · @st.LanguageMode</dd>
+            <dt>Ghế</dt>
+            <dd>
+                @if (labels.Count > 0)
+                {
+                    foreach (var l in labels) { <span class="a-chipseat">@l</span> }
+                }
+                else { <span class="a-muted">Ghế đã được nhả</span> }
+            </dd>
+            <dt>Loại vé</dt>
+            <dd>
+                @if (ticketGroups.Count > 0) { @string.Join(", ", ticketGroups) }
+                else { <span class="a-muted">Không có</span> }
+            </dd>
+            <dt>Bắp nước</dt>
+            <dd>
+                @if (Model.Items.Count > 0)
+                {
+                    foreach (var i in Model.Items) { <div>@i.Quantity × @i.Product.Name <span class="a-muted">(@((i.UnitPrice * i.Quantity).ToString("N0")) đ)</span></div> }
+                }
+                else { <span class="a-muted">Không chọn</span> }
+            </dd>
+            <dt>Tiền vé</dt><dd>@seatsTotal.ToString("N0") đ</dd>
+            <dt>Tiền bắp nước</dt><dd>@itemsTotal.ToString("N0") đ</dd>
+            <dt>Tổng cộng</dt><dd><b class="a-rvtotal">@Model.Total.ToString("N0") đ</b></dd>
+        </dl>
+    </div>
+    <div class="a-rvside">
+        @if (active)
+        {
+            <div class="a-timerlabel">Thời gian giữ ghế còn lại</div>
+            <div class="a-timer" id="pg-count" data-left="@left">--:--</div>
+            <a href="/Booking/Combos/@Model.Id" class="a-btn ghost a-block">Sửa bắp nước</a>
+            <a href="/Payment/Pay/@Model.Id" class="a-btn a-block">Thanh toán</a>
+            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post">
+                <button type="submit" class="a-btn ghost a-block">Hủy giữ ghế</button>
+            </form>
+        }
+        else
+        {
+            <div class="a-timerlabel">Ghế của bạn không còn được giữ</div>
+        }
+        <div id="pg-expired" style="display:@(active ? "none" : "block")">
+            <a href="/Booking/Seats/@Model.ShowtimeId" class="a-btn a-block">Chọn lại ghế</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var el = document.getElementById('pg-count');
+            if (!el) return;
+            var left = parseInt(el.getAttribute('data-left'), 10) || 0;
+            function two(n) { return (n < 10 ? '0' : '') + n; }
+            function tick() {
+                if (left <= 0) {
+                    el.textContent = '00:00';
+                    el.classList.add('over');
+                    document.getElementById('pg-expired').style.display = 'block';
+                    return;
+                }
+                el.textContent = two(Math.floor(left / 60)) + ':' + two(left % 60);
+                if (left <= 60) el.classList.add('warn');
+                left--;
+                setTimeout(tick, 1000);
+            }
+            tick();
+        })();
+    </script>
+}

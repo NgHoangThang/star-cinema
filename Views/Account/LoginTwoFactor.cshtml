@@ -1,0 +1,36 @@
+@model CinemaApp.Controllers.TwoFactorLoginForm
+@{
+    ViewData["Title"] = "Xác thực 2 lớp";
+    Layout = "_AuthLayout";
+    ViewData["SideTitle"] = "Thêm một lớp bảo vệ";
+    ViewData["SideText"] = "Nhập mã 6 số từ ứng dụng xác thực trên điện thoại của bạn.";
+}
+
+<h1>Xác thực 2 lớp</h1>
+<p class="sa-sub">@(Model.UseRecovery ? "Nhập một mã khôi phục bạn đã lưu" : "Nhập mã 6 số trong ứng dụng Authenticator")</p>
+
+<form method="post" action="/Account/LoginTwoFactor">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="sa-error"></div>
+    <input type="hidden" name="RememberMe" value="@(Model.RememberMe ? "true" : "false")" />
+    <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+    <input type="hidden" name="UseRecovery" value="@(Model.UseRecovery ? "true" : "false")" />
+
+    <div class="sa-field">
+        <label>@(Model.UseRecovery ? "Mã khôi phục" : "Mã 6 số")</label>
+        <input type="text" name="Code" autocomplete="one-time-code" inputmode="@(Model.UseRecovery ? "text" : "numeric")" maxlength="20" autofocus />
+    </div>
+
+    <button type="submit" class="st-btn primary sa-block">Xác nhận</button>
+</form>
+
+<p class="sa-foot">
+    @if (Model.UseRecovery)
+    {
+        <a href="/Account/LoginTwoFactor?rememberMe=@(Model.RememberMe ? "true" : "false")&returnUrl=@Uri.EscapeDataString(Model.ReturnUrl ?? "")">Dùng mã trong ứng dụng</a>
+    }
+    else
+    {
+        <a href="/Account/LoginTwoFactor?useRecovery=true&rememberMe=@(Model.RememberMe ? "true" : "false")&returnUrl=@Uri.EscapeDataString(Model.ReturnUrl ?? "")">Mất điện thoại? Dùng mã khôi phục</a>
+    }
+</p>

@@ -1,0 +1,63 @@
+@model CinemaApp.Models.VerifyPhoneViewModel
+@{
+    ViewData["Title"] = "Xác minh số điện thoại";
+    Layout = "_AuthLayout";
+    ViewData["SideTitle"] = "Xác minh số điện thoại";
+    ViewData["SideText"] = "Cần xác minh trước khi đặt vé. Mỗi số chỉ dùng cho một tài khoản.";
+}
+
+<h1>Xác minh số điện thoại</h1>
+<p class="sa-sub">Nhập số điện thoại của bạn để nhận mã xác minh</p>
+
+@if (!Model.Sent)
+{
+    <form asp-action="SendOtp" method="post">
+        <input type="hidden" asp-for="ReturnUrl" />
+        <div class="sa-field">
+            <label asp-for="Phone"></label>
+            <input asp-for="Phone" autocomplete="tel" placeholder="0912345678" />
+            <span asp-validation-for="Phone" class="sa-ferr"></span>
+        </div>
+        <button type="submit" class="st-btn primary sa-block">Gửi mã xác minh</button>
+    </form>
+}
+else
+{
+    @if (ViewBag.CodeByEmail == true)
+    {
+        <div class="sa-ok">Mã xác minh đã được gửi tới <b>email của tài khoản</b>. Hãy kiểm tra hộp thư (cả thư rác).</div>
+    }
+    else
+    {
+        <div class="sa-ok">Đang xác minh số <b>@Model.Phone</b>.</div>
+    }
+
+    @if (ViewBag.DevOtp != null)
+    {
+        <div class="sa-dev">
+            <b>Chế độ thử nghiệm</b>: web chưa gửi được email hay SMS thật nên mã hiện ngay ở đây.
+            <div class="sa-dev-code">@ViewBag.DevOtp</div>
+        </div>
+    }
+
+    <form asp-action="VerifyOtp" method="post">
+        <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+        <input type="hidden" name="Phone" value="@Model.Phone" />
+        <div class="sa-field">
+            <label asp-for="Code"></label>
+            <input asp-for="Code" class="sa-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••" />
+            <span asp-validation-for="Code" class="sa-ferr"></span>
+            <span asp-validation-for="Phone" class="sa-ferr"></span>
+        </div>
+        <button type="submit" class="st-btn primary sa-block">Xác minh</button>
+    </form>
+
+    <form asp-action="SendOtp" method="post" class="sa-resend">
+        <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+        <input type="hidden" name="Phone" value="@Model.Phone" />
+        Chưa nhận được mã?
+        <button type="submit" class="sa-linkbtn" data-countdown="60" data-label="Gửi lại mã">Gửi lại mã</button>
+    </form>
+
+    <p class="sa-foot"><a href="/Account/VerifyPhone?returnUrl=@Uri.EscapeDataString(Model.ReturnUrl ?? "")">Dùng số khác</a></p>
+}

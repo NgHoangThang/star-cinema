@@ -1,0 +1,278 @@
+﻿@using CinemaApp.Data
+@using CinemaApp.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Caching.Memory
+@inject AppDbContext Db
+@inject IMemoryCache Cache
+@inject SignInManager<AppUser> SignIn
+@inject UserManager<AppUser> UserMgr
+@{
+    const string Brand = "STAR CINEMA";   // đổi tên thương hiệu ở đây (và ở dòng <span> logo bên dưới)
+
+    var cities = await Cache.GetOrCreateAsync("cities", async e =>
+    {
+        e.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+        return await Db.Cities.AsNoTracking().OrderBy(c => c.Name).ToListAsync();
+    }) ?? new List<City>();
+
+    var currentCity = Context.Request.Cookies["city"] ?? "Hồ Chí Minh";
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+    bool signedIn = SignIn.IsSignedIn(User);
+    string displayName = "";
+    if (signedIn)
+    {
+        var u = await UserMgr.GetUserAsync(User);
+        displayName = string.IsNullOrWhiteSpace(u?.FullName) ? (u?.Email ?? "") : u.FullName;
+    }
+    string initial = string.IsNullOrWhiteSpace(displayName) ? "?" : displayName.Trim().Substring(0, 1).ToUpper();
+    bool dark = ViewData["Dark"] is true;
+
+    var sfHot = CinemaApp.Services.SiteInfo.Hotline;
+    var sfMail = CinemaApp.Services.SiteInfo.SupportEmail;
+    var sfHours = CinemaApp.Services.SiteInfo.OpenHours;
+    var sfAddr = CinemaApp.Services.SiteInfo.Address;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0e0c0a" />
+    <link rel="icon" type="image/svg+xml" href="~/favicon.svg" />
+    <title>@ViewData["Title"] - @Brand</title>
+    <script>document.documentElement.classList.add('js');</script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/star.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/star-pages.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/star-light.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/star-a.css" asp-append-version="true" />
+</head>
+<body class="st @(ViewData["Light"] is true ? "lt" : "")">
+<div class="st-bg" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<div class="a-topbar">
+    <span>Đặt vé online, chọn ghế ngay trên web.</span>
+    <span><a href="/Account/Register">Đăng ký thành viên</a></span>
+</div>
+<header class="st-nav" id="st-nav">
+    <div class="st-wrap st-nav-in">
+        <a class="st-logo" href="/" aria-label="@Brand">
+            <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+                <defs>
+                    <linearGradient id="stg" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stop-color="#ffd86b" />
+                        <stop offset="1" stop-color="#ff9f1a" />
+                    </linearGradient>
+                </defs>
+                <polygon points="12,2 14.9,8.6 22,9.3 16.6,14 18.2,21 12,17.3 5.8,21 7.4,14 2,9.3 9.1,8.6" fill="url(#stg)" />
+            </svg>
+            <span>STAR<b>CINEMA</b></span>
+        </a>
+
+        <button class="st-burger" type="button" data-bs-toggle="collapse" data-bs-target="#st-menu"
+                aria-controls="st-menu" aria-expanded="false" aria-label="Mở menu">
+            <span></span><span></span><span></span>
+        </button>
+
+        <nav class="st-menu collapse" id="st-menu">
+            <ul class="st-links">
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown">Phim</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/Movies?status=NowShowing">Đang chiếu</a></li>
+                        <li><a class="dropdown-item" href="/Movies?status=ComingSoon">Sắp chiếu</a></li>
+                    </ul>
+                </li>
+                <li><a href="/Cinemas">Rạp Star</a></li>
+                <li><a href="/Member">Thành viên</a></li>
+                <li><a href="/#uu-dai">Ưu đãi</a></li>
+                <li><a href="/News">Tin tức</a></li>
+            </ul>
+
+            <div class="st-actions">
+                <form class="st-search" action="/Movies" method="get">
+                    <input type="search" name="q" placeholder="Tìm phim" aria-label="Tìm phim" />
+                    <button type="submit" aria-label="Tìm">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+                    </button>
+                </form>
+
+                <div class="dropdown">
+                    <a href="#" class="st-city dropdown-toggle" data-bs-toggle="dropdown">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></svg>
+                        @currentCity
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        @foreach (var c in cities)
+                        {
+                            <li>
+                                <a class="dropdown-item @(c.Name == currentCity ? "active" : "")"
+                                   asp-controller="Home" asp-action="SetCity"
+                                   asp-route-name="@c.Name" asp-route-returnUrl="@returnUrl">@c.Name</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+
+                <a href="/Movies?status=NowShowing" class="st-btn primary sm">Mua vé</a>
+
+                @if (signedIn)
+                {
+                    <div class="dropdown">
+                        <a href="#" class="st-avatar" data-bs-toggle="dropdown" aria-label="Tài khoản" title="@displayName">@initial</a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><span class="dropdown-item-text" style="color:#9ca3af;font-size:13px;padding:6px 14px">@displayName</span></li>
+                            <li><a class="dropdown-item" href="/Profile">Hồ sơ cá nhân</a></li> @if (User.IsInRole("Admin")) { <li><a class="dropdown-item" href="/Admin">Quản trị</a></li> } else if (User.IsInRole(AdminSeeder.StaffRoleName)) { <li><a class="dropdown-item" href="/Admin/Scan">Quét vé</a></li> }
+                            <li><a class="dropdown-item" href="/Account/ChangePassword">Đổi mật khẩu</a></li>
+                            <li><a class="dropdown-item" href="/Tickets">Vé của tôi</a></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li>
+                                <form asp-controller="Account" asp-action="Logout" method="post">
+                                    <button type="submit" class="dropdown-item">Đăng xuất</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <a href="/Account/Login" class="st-login">Đăng nhập</a>
+                    <a href="/Account/Register" class="st-btn ghost sm">Đăng ký</a>
+                }
+            </div>
+        </nav>
+    </div>
+</header>
+
+<main class="st-main">
+    <div class="@(dark ? "" : "st-paper")">
+        @RenderBody()
+    </div>
+</main>
+
+<style>
+    .sf{position:relative;margin-top:60px;background:linear-gradient(180deg,#14100c 0%,#0b0907 100%);border-top:1px solid #3a2f1e;color:#b9ad97}
+    .sf::before{content:"";position:absolute;left:0;right:0;top:-1px;height:2px;background:linear-gradient(90deg,transparent,#e6a23c,transparent)}
+    .sf-cta{max-width:1180px;margin:0 auto;padding:36px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;border-bottom:1px solid #2a2218}
+    .sf-cta h3{margin:0 0 4px;font-size:22px;font-weight:800;color:#f3ead9}
+    .sf-cta p{margin:0;font-size:14px;color:#a89a82}
+    .sf-btn{display:inline-block;background:#e6a23c;color:#1a1208!important;font-weight:800;padding:12px 28px;border-radius:999px;text-decoration:none;font-size:14px;box-shadow:0 8px 24px rgba(230,162,60,.25);transition:background .15s,transform .15s}
+    .sf-btn:hover{background:#ffd27a;transform:translateY(-2px)}
+    .sf-main{max-width:1180px;margin:0 auto;padding:40px 24px 30px;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1.2fr;gap:36px}
+    .sf-logo{display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:#f3ead9;font-weight:800;font-size:20px;letter-spacing:3px}
+    .sf-logo b{color:#e6a23c;font-weight:800}
+    .sf-logo:hover{color:#f3ead9}
+    .sf-tag{margin:14px 0 14px;font-size:14px;line-height:1.65;color:#a89a82;max-width:320px}
+    .sf-chips{display:flex;flex-wrap:wrap;gap:8px}
+    .sf-chips span{border:1px solid #6b5a3a;border-radius:999px;padding:4px 12px;font-size:12px;color:#ffd27a;background:rgba(230,162,60,.06)}
+    .sf h4{margin:0 0 14px;font-size:12px;letter-spacing:2px;color:#e6a23c;font-weight:700}
+    .sf-col a{display:block;color:#b9ad97;text-decoration:none;font-size:14px;padding:4px 0;transition:color .15s,transform .15s}
+    .sf-col a:hover{color:#ffd27a;transform:translateX(3px)}
+    .sf-ct{font-size:14px;line-height:1.6;margin:0 0 8px;color:#b9ad97}
+    .sf-ct b{display:block;font-size:11px;letter-spacing:1px;color:#7d7261;font-weight:600}
+    .sf-bot{border-top:1px solid #2a2218}
+    .sf-bot-in{max-width:1180px;margin:0 auto;padding:16px 24px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:#7d7261}
+    .sf-bot-in a{color:#9a8d77;text-decoration:none;margin-left:18px}
+    .sf-bot-in a:hover{color:#ffd27a}
+    .sf-credit{font-size:11px;line-height:1.5;color:#6b6152}
+    @@media(max-width:1000px){
+        .sf-main{grid-template-columns:1fr 1fr}
+        .sf-brand{grid-column:1/-1}
+    }
+    @@media(max-width:560px){
+        .sf-main{grid-template-columns:1fr;gap:26px}
+        .sf-bot-in a{margin:0 18px 0 0}
+    }
+</style>
+<footer class="sf">
+    <div class="sf-cta">
+        <div>
+            <h3>Sẵn sàng cho suất chiếu tiếp theo?</h3>
+            <p>Chọn phim, chọn ghế và nhận vé có mã QR trong vài phút.</p>
+        </div>
+        <a class="sf-btn" href="/Movies?status=NowShowing">Mua vé ngay</a>
+    </div>
+
+    <div class="sf-main">
+        <div class="sf-brand">
+            <a class="sf-logo" href="/" aria-label="@Brand">
+                <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="sfg" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stop-color="#ffd86b" />
+                            <stop offset="1" stop-color="#ff9f1a" />
+                        </linearGradient>
+                    </defs>
+                    <polygon points="12,2 14.9,8.6 22,9.3 16.6,14 18.2,21 12,17.3 5.8,21 7.4,14 2,9.3 9.1,8.6" fill="url(#sfg)" />
+                </svg>
+                <span>STAR<b>CINEMA</b></span>
+            </a>
+            <p class="sf-tag">Đặt vé xem phim trực tuyến: chọn phim, chọn ghế và nhận vé có mã QR ngay trên điện thoại.</p>
+            <div class="sf-chips">
+                <span>Giữ ghế 10 phút</span>
+                <span>Vé gửi qua email</span>
+                <span>Tích điểm thành viên</span>
+            </div>
+        </div>
+
+        <div class="sf-col">
+            <h4>KHÁM PHÁ</h4>
+            <a href="/Movies?status=NowShowing">Phim đang chiếu</a>
+            <a href="/Movies?status=ComingSoon">Phim sắp chiếu</a>
+            <a href="/Cinemas">Hệ thống rạp</a>
+            <a href="/Offers">Ưu đãi</a>
+            <a href="/News">Tin tức</a>
+        </div>
+
+        <div class="sf-col">
+            <h4>THÔNG TIN</h4>
+            <a href="/Info/faq">Câu hỏi thường gặp</a>
+            <a href="/Info/refund">Đặt vé và hoàn tiền</a>
+            <a href="/Info/ratings">Phân loại phim</a>
+            <a href="/Info/terms">Điều khoản sử dụng</a>
+            <a href="/Info/privacy">Chính sách bảo mật</a>
+            <a href="/Info/about">Giới thiệu</a>
+        </div>
+
+        <div class="sf-col">
+            <h4>TÀI KHOẢN</h4>
+            <a href="/Tickets">Vé của tôi</a>
+            <a href="/Profile">Hồ sơ cá nhân</a>
+            <a href="/Member">Thành viên</a>
+        </div>
+
+        <div class="sf-col">
+            <h4>HỖ TRỢ</h4>
+            @if (!string.IsNullOrWhiteSpace(sfHot)) { <p class="sf-ct"><b>HOTLINE</b>@sfHot</p> }
+            @if (!string.IsNullOrWhiteSpace(sfMail)) { <p class="sf-ct"><b>EMAIL</b>@sfMail</p> }
+            @if (!string.IsNullOrWhiteSpace(sfHours)) { <p class="sf-ct"><b>GIỜ LÀM VIỆC</b>@sfHours</p> }
+            @if (!string.IsNullOrWhiteSpace(sfAddr)) { <p class="sf-ct"><b>ĐỊA CHỈ</b>@sfAddr</p> }
+            <a href="/Info/contact">Liên hệ</a>
+        </div>
+    </div>
+
+    <div class="sf-bot">
+        <div class="sf-bot-in">
+            <span>© @(DateTime.UtcNow.AddHours(7).Year) @Brand. Mọi quyền được bảo lưu.</span>
+            <span>
+                <a href="/Info/terms">Điều khoản</a>
+                <a href="/Info/privacy">Bảo mật</a>
+                <a href="/Info/refund">Hoàn tiền</a>
+            </span>
+        </div>
+        <div class="sf-bot-in" style="padding-top:0">
+            <span class="sf-credit">Sản phẩm này sử dụng API của TMDB nhưng không được TMDB xác nhận hay chứng nhận.</span>
+        </div>
+    </div>
+</footer>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+<script src="~/js/star.js" asp-append-version="true"></script>
+<script src="~/js/loader.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

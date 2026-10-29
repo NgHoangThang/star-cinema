@@ -1,0 +1,65 @@
+@using CinemaApp.Controllers
+@using CinemaApp.Models
+@model CinemaForm
+@{
+    bool isNew = Model.Id == 0;
+    ViewData["Title"] = isNew ? "Thêm rạp" : "Sửa rạp";
+    ViewData["Dark"] = true;
+    var cities = (List<City>)ViewBag.Cities;
+    string? error = ViewBag.Error as string;
+}
+
+<style>
+    .cine-wrap{max-width:640px}
+    .cine-wrap .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .cine-wrap h1{font-size:28px;font-weight:800;margin:4px 0 16px;color:var(--a-text)}
+    .cine-err{margin:0 0 14px;padding:12px 16px;border:1px solid #7a2e38;border-left:4px solid #ff8a98;border-radius:8px;background:var(--a-bg2);color:#ffb3bd;font-size:14px}
+    .cine-card{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:20px}
+    .cine-card label{display:block;font-size:13px;color:var(--a-mute);margin:14px 0 6px}
+    .cine-card label:first-child{margin-top:0}
+    .cine-card input,.cine-card select{width:100%;background:#14100c;border:1px solid var(--a-line);border-radius:8px;color:var(--a-text);padding:10px 12px;font-size:14px}
+    .cine-hint{font-size:12px;color:var(--a-mute);margin-top:4px}
+    .cine-act{display:flex;gap:12px;align-items:center;margin-top:20px}
+    .cine-act a{color:var(--a-mute);font-size:14px}
+</style>
+
+<div class="cine-wrap">
+    <div class="eb">QUẢN TRỊ · RẠP</div>
+    <h1>@(isNew ? "Thêm rạp" : "Sửa rạp")</h1>
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="cine-err">@error</div>
+    }
+
+    <form method="post" action="/Admin/Cinemas/SaveCinema" class="cine-card">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Id" value="@Model.Id" />
+
+        <label for="CityId">Thành phố</label>
+        <select id="CityId" name="CityId">
+            @foreach (var c in cities)
+            {
+                <option value="@c.Id" selected="@(c.Id == Model.CityId)">@c.Name</option>
+            }
+        </select>
+
+        <label for="NewCity">Hoặc thành phố mới (bỏ trống nếu chọn ở trên)</label>
+        <input id="NewCity" name="NewCity" maxlength="60" value="@Model.NewCity" />
+
+        <label for="Name">Tên rạp</label>
+        <input id="Name" name="Name" maxlength="100" value="@Model.Name" required />
+
+        <label for="Address">Địa chỉ</label>
+        <input id="Address" name="Address" maxlength="200" value="@Model.Address" required />
+
+        <label for="Hotline">Hotline</label>
+        <input id="Hotline" name="Hotline" maxlength="20" value="@Model.Hotline" required />
+        <div class="cine-hint">Ví dụ: 1900 0001</div>
+
+        <div class="cine-act">
+            <button class="a-btn" type="submit">Lưu</button>
+            <a href="/Admin/Cinemas">Hủy</a>
+        </div>
+    </form>
+</div>

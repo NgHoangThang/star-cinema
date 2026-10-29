@@ -1,0 +1,238 @@
+@using CinemaApp.Controllers
+@model AdminDashboard
+@{
+    ViewData["Title"] = "Tổng quan";
+    ViewData["Dark"] = true;
+
+    var days = Model.Days;
+    decimal maxRev = days.Max(d => d.Revenue);
+    int diff = days[6].Tickets - days[5].Tickets;
+    int maxTop = Model.TopMovies.Count > 0 ? Model.TopMovies.Max(m => m.Tickets) : 1;
+    var vnNow = DateTime.UtcNow.AddHours(7);
+
+    string Short(decimal v) => v >= 1_000_000m ? (v / 1_000_000m).ToString("0.#") + "tr"
+                              : v >= 1000m ? (v / 1000m).ToString("0") + "k"
+                              : v.ToString("0");
+
+    string StatusText(AdminOrderRow r) => r.Status switch
+    {
+        "Pending" => r.ExpiresAt > DateTime.UtcNow ? "Đang chọn" : "Hết hạn",
+        "WaitingPayment" => r.ExpiresAt > DateTime.UtcNow ? "Chờ thanh toán" : "Hết hạn",
+        "Paid" => "Đã thanh toán",
+        "Expired" => "Hết hạn",
+        "Cancelled" => "Đã hủy",
+        "Refunded" => "Đã hoàn tiền",
+        _ => r.Status
+    };
+    string StatusClass(AdminOrderRow r) => StatusText(r) switch
+    {
+        "Đã thanh toán" => "ok",
+        "Đã hoàn tiền" => "info",
+        "Chờ thanh toán" => "wait",
+        "Đang chọn" => "info",
+        _ => "off"
+    };
+}
+
+<style>
+    .dh-head{margin:0 0 22px}
+    .dh-head .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .dh-head h1{font-size:28px;font-weight:800;margin:4px 0 4px;color:var(--a-text)}
+    .dh-head p{margin:0;color:var(--a-mute);font-size:14px}
+
+    .dh-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}
+    .dh-kpi{display:flex;gap:14px;align-items:flex-start;background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:18px;text-decoration:none;color:inherit;transition:border-color .2s,transform .2s}
+    .dh-kpi:hover{border-color:var(--a-gold);transform:translateY(-2px)}
+    .dh-kpi.hot{border-color:var(--a-gold);background:rgba(230,162,60,.09)}
+    .dh-ico{flex:0 0 auto;width:42px;height:42px;border-radius:10px;display:grid;place-items:center;background:rgba(230,162,60,.12);color:var(--a-gold)}
+    .dh-ico svg{width:22px;height:22px}
+    .dh-kpi span.l{display:block;font-size:12px;color:var(--a-mute);letter-spacing:.5px}
+    .dh-kpi b{display:block;font-size:26px;line-height:1.2;margin:4px 0 2px;color:var(--a-text);font-weight:800}
+    .dh-kpi small{font-size:12px;color:var(--a-mute)}
+    .dh-kpi small.up{color:#7ee2a0}
+    .dh-kpi small.down{color:#ff8f9d}
+
+    .dh-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;margin-bottom:18px}
+    .dh-card{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:12px;padding:20px 22px}
+    .dh-card h3{margin:0;font-size:16px;color:var(--a-text);font-weight:700}
+    .dh-card .sub{color:var(--a-mute);font-size:12px;margin-top:2px}
+    .dh-cardhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}
+    .dh-cardhead a{color:var(--a-gold);font-size:13px;text-decoration:none;white-space:nowrap}
+    .dh-cardhead a:hover{text-decoration:underline}
+    .dh-big{font-size:20px;font-weight:800;color:var(--a-gold);white-space:nowrap}
+
+    .dh-chart{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;align-items:end;height:230px}
+    .dh-col{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:6px}
+    .dh-val{font-size:11px;color:var(--a-mute);height:14px}
+    .dh-bar{width:100%;max-width:56px;min-height:4px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#8a6428,#4a3516);transition:filter .2s}
+    .dh-col:hover .dh-bar{filter:brightness(1.3)}
+    .dh-col.today .dh-bar{background:linear-gradient(180deg,#ffd27a,#e6a23c)}
+    .dh-col.today .dh-val{color:var(--a-gold2);font-weight:700}
+    .dh-lab{font-size:12px;color:var(--a-mute);text-align:center;line-height:1.3}
+    .dh-lab b{display:block;color:var(--a-text);font-weight:600}
+
+    .dh-top{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+    .dh-top li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center}
+    .dh-rank{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;background:rgba(230,162,60,.14);color:var(--a-gold)}
+    .dh-top .t{font-size:14px;color:var(--a-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dh-meter{height:5px;border-radius:5px;background:#2a231b;margin-top:6px;overflow:hidden}
+    .dh-meter i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#e6a23c,#ffd27a)}
+    .dh-top .n{font-size:13px;color:var(--a-mute);white-space:nowrap}
+    .dh-empty{color:var(--a-mute);font-size:14px;padding:8px 0}
+
+    .dh-tablewrap{overflow-x:auto}
+    .dh-table{width:100%;border-collapse:collapse;font-size:14px}
+    .dh-table th{text-align:left;font-size:11px;letter-spacing:1px;color:var(--a-mute);font-weight:600;padding:8px 12px;border-bottom:1px solid var(--a-line);white-space:nowrap}
+    .dh-table td{padding:13px 12px;border-bottom:1px solid var(--a-line);color:var(--a-text);white-space:nowrap}
+    .dh-table tr:last-child td{border-bottom:0}
+    .dh-table .code{font-weight:800;letter-spacing:1px;color:var(--a-gold2)}
+    .dh-table .mut{color:var(--a-mute)}
+    .dh-table .money{font-weight:700}
+    .dh-b{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid}
+    .dh-b.ok{color:#7ee2a0;border-color:#2f7d4f;background:rgba(47,125,79,.12)}
+    .dh-b.wait{color:#ffd27a;border-color:#a67a22;background:rgba(230,162,60,.12)}
+    .dh-b.info{color:#8fc5ff;border-color:#2f5f9a;background:rgba(47,95,154,.14)}
+    .dh-b.off{color:var(--a-mute);border-color:#4a4034}
+
+    @@media(max-width:1100px){.dh-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dh-row{grid-template-columns:1fr}}
+    @@media(max-width:600px){.dh-kpis{grid-template-columns:1fr}.dh-chart{gap:6px}}
+</style>
+
+<div class="dh-head">
+    <div class="eb">QUẢN TRỊ</div>
+    <h1>Tổng quan</h1>
+    <p>Hôm nay, @vnNow.ToString("dd/MM/yyyy"). Số liệu tính theo giờ Việt Nam.</p>
+</div>
+
+<div class="dh-kpis">
+    <div class="dh-kpi">
+        <div class="dh-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M14.5 9.2c-.4-.8-1.4-1.2-2.5-1.2-1.4 0-2.5.8-2.5 1.9 0 2.6 5.2 1.3 5.2 4 0 1.1-1.1 2-2.7 2-1.2 0-2.3-.5-2.7-1.4M12 6.5V8M12 16v1.5"/></svg></div>
+        <div>
+            <span class="l">DOANH THU HÔM NAY</span>
+            <b>@Model.RevenueToday.ToString("N0") đ</b>
+            <small>@Model.OrdersToday đơn đã thanh toán</small>
+        </div>
+    </div>
+    <div class="dh-kpi">
+        <div class="dh-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v3a2 2 0 000 4v3H4v-3a2 2 0 000-4z"/><path d="M14 7v10" stroke-dasharray="2 2"/></svg></div>
+        <div>
+            <span class="l">VÉ BÁN HÔM NAY</span>
+            <b>@Model.TicketsToday</b>
+            @if (diff > 0) { <small class="up">+@diff so với hôm qua</small> }
+            else if (diff < 0) { <small class="down">@diff so với hôm qua</small> }
+            else { <small>Bằng hôm qua</small> }
+        </div>
+    </div>
+    <a class="dh-kpi @(Model.Waiting > 0 ? "hot" : "")" href="/Admin/Orders?status=WaitingPayment">
+        <div class="dh-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <div>
+            <span class="l">CHỜ XÁC NHẬN</span>
+            <b>@Model.Waiting</b>
+            <small>@(Model.Waiting > 0 ? "Bấm để duyệt đơn" : "Không có đơn nào cần duyệt")</small>
+        </div>
+    </a>
+    <div class="dh-kpi">
+        <div class="dh-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 010 5.8M18 14c2 .6 3 2.2 3 4"/></svg></div>
+        <div>
+            <span class="l">ĐANG CHỌN GHẾ</span>
+            <b>@Model.Pending</b>
+            <small>Khách đang ở bước chọn ghế</small>
+        </div>
+    </div>
+</div>
+
+<div class="dh-row">
+    <div class="dh-card">
+        <div class="dh-cardhead">
+            <div>
+                <h3>Doanh thu 7 ngày qua</h3>
+                <div class="sub">Thực thu theo ngày thanh toán (đã loại đơn hoàn tiền). Đã hoàn trong 7 ngày: @Model.Refund7.ToString("N0") đ</div>
+            </div>
+            <div class="dh-big">@Model.Revenue7.ToString("N0") đ</div>
+        </div>
+        <div class="dh-chart">
+            @for (int i = 0; i < days.Count; i++)
+            {
+                var d = days[i];
+                double pct = maxRev > 0 ? (double)(d.Revenue / maxRev) * 100.0 : 0;
+                bool isToday = i == days.Count - 1;
+                <div class="dh-col @(isToday ? "today" : "")" title="@d.Label: @d.Revenue.ToString("N0") đ · @d.Orders đơn · @d.Tickets vé">
+                    <div class="dh-val">@(d.Revenue > 0 ? Short(d.Revenue) : "")</div>
+                    <div class="dh-bar" style="height:@pct.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                    <div class="dh-lab"><b>@(isToday ? "Hôm nay" : d.Weekday)</b>@d.Label</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="dh-card">
+        <div class="dh-cardhead">
+            <div>
+                <h3>Phim bán chạy</h3>
+                <div class="sub">Số vé bán trong 7 ngày qua</div>
+            </div>
+        </div>
+        @if (Model.TopMovies.Count == 0)
+        {
+            <div class="dh-empty">Chưa có vé nào được bán trong 7 ngày qua.</div>
+        }
+        else
+        {
+            <ul class="dh-top">
+                @for (int i = 0; i < Model.TopMovies.Count; i++)
+                {
+                    var m = Model.TopMovies[i];
+                    <li>
+                        <span class="dh-rank">@(i + 1)</span>
+                        <div>
+                            <div class="t" title="@m.Title">@m.Title</div>
+                            <div class="dh-meter"><i style="width:@(((double)m.Tickets / maxTop * 100.0).ToString("0", System.Globalization.CultureInfo.InvariantCulture))%"></i></div>
+                        </div>
+                        <span class="n">@m.Tickets vé</span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+<div class="dh-card">
+    <div class="dh-cardhead">
+        <div>
+            <h3>Đơn mới nhất</h3>
+            <div class="sub">Thực thu @Model.RevenueTotal.ToString("N0") đ (@Model.PaidTotal đơn). Đã hoàn @Model.RefundTotal.ToString("N0") đ (@Model.RefundCount đơn). Doanh thu gộp @((Model.RevenueTotal + Model.RefundTotal).ToString("N0")) đ</div>
+        </div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap">
+            <a href="/Admin/Orders">Xem tất cả đơn →</a>
+            <a href="/Admin/Audit">Nhật ký thao tác →</a>
+        </div>
+    </div>
+    @if (Model.Recent.Count == 0)
+    {
+        <div class="dh-empty">Chưa có đơn nào.</div>
+    }
+    else
+    {
+        <div class="dh-tablewrap">
+            <table class="dh-table">
+                <thead>
+                    <tr><th>MÃ VÉ</th><th>KHÁCH</th><th>PHIM</th><th>SỐ GHẾ</th><th>TỔNG</th><th>TRẠNG THÁI</th><th>TẠO LÚC</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Recent)
+                    {
+                        <tr>
+                            <td class="code">@(r.Code ?? "-")</td>
+                            <td class="mut">@r.Email</td>
+                            <td>@r.Movie</td>
+                            <td>@r.SeatCount</td>
+                            <td class="money">@r.Total.ToString("N0") đ</td>
+                            <td><span class="dh-b @StatusClass(r)">@StatusText(r)</span></td>
+                            <td class="mut">@r.CreatedAt.AddHours(7).ToString("HH:mm dd/MM")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

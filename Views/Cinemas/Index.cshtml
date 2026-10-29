@@ -1,0 +1,90 @@
+@model List<CinemaApp.Models.Cinema>
+@{
+    ViewData["Title"] = "Rạp Star";
+    ViewData["Dark"] = true;
+    var city = (string)ViewBag.City;
+    var cities = (List<CinemaApp.Models.City>)ViewBag.Cities;
+    var big = new[] { "Hồ Chí Minh", "Hà Nội", "Đà Nẵng" };
+    var others = cities.Where(c => !big.Contains(c.Name)).ToList();
+    bool otherSelected = others.Any(c => c.Name == city);
+}
+
+<style>
+    .a-pghead{padding:44px 48px 26px;background:radial-gradient(ellipse at 20% 0%,#2b2013 0%,#0e0c0a 70%);border-bottom:1px solid var(--a-line)}
+    .a-pghead .eb{color:var(--a-gold);font-size:12px;letter-spacing:3px}
+    .a-pghead h1{font-size:clamp(26px,4vw,40px);font-weight:800;margin:6px 0 6px;color:var(--a-text)}
+    .a-pghead p{color:var(--a-mute);margin:0;font-size:14px}
+    .a-cities{display:flex;gap:8px;flex-wrap:wrap;padding:20px 48px 0}
+    .a-fmt{border:1px solid var(--a-line);border-radius:4px;padding:8px 16px;font-size:13px;color:var(--a-mute)!important;text-decoration:none;background:var(--a-bg2);transition:border-color .15s}
+    .a-fmt:hover{border-color:var(--a-gold)}
+    .a-fmt.active{border-color:var(--a-gold);color:var(--a-gold)!important;background:rgba(230,162,60,.1)}
+    .a-citysel{background:var(--a-bg2);color:var(--a-mute);border:1px solid var(--a-line);border-radius:4px;padding:8px 12px;font-size:13px;outline:0}
+    .a-citysel.active{border-color:var(--a-gold);color:var(--a-gold)}
+    .a-citysel option{background:var(--a-bg2);color:var(--a-text)}
+    .a-count{padding:16px 48px 0;color:var(--a-mute);font-size:13px;margin:0}
+    .a-count b{color:var(--a-gold)}
+    .a-empty{margin:24px 48px;padding:30px;border:1px dashed #6b5a3a;border-radius:6px;color:var(--a-mute);text-align:center}
+    .a-cgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;padding:20px 48px 0}
+    .a-cin{background:var(--a-bg2);border:1px solid var(--a-line);border-radius:8px;padding:22px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s,box-shadow .2s}
+    .a-cin::before{content:"★";position:absolute;right:14px;top:6px;font-size:60px;color:rgba(230,162,60,.07)}
+    .a-cin:hover{border-color:var(--a-gold);transform:translateY(-4px);box-shadow:0 16px 40px rgba(230,162,60,.18)}
+    .a-cin h3{margin:0;font-size:18px;color:var(--a-gold)}
+    .a-cin .l{font-size:13px;color:var(--a-text)}
+    .a-cin .l span{display:inline-block;min-width:64px;color:var(--a-mute)}
+    .a-chipseat{display:inline-block;border:1px solid var(--a-gold);color:var(--a-gold);border-radius:4px;padding:2px 9px;font-size:12px;margin:0 6px 4px 0}
+    @@media(max-width:1000px){.a-cgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @@media(max-width:700px){
+        .a-pghead,.a-cities,.a-count,.a-cgrid{padding-left:16px;padding-right:16px}
+        .a-cgrid{grid-template-columns:1fr}
+        .a-empty{margin:24px 16px}
+    }
+</style>
+
+<div class="a-pghead">
+    <div class="eb">HỆ THỐNG RẠP</div>
+    <h1>Rạp Star Cinema</h1>
+    <p>Chọn thành phố để xem rạp và lịch chiếu gần bạn.</p>
+</div>
+
+<div class="a-cities">
+    @foreach (var name in big)
+    {
+        <a class="a-fmt @(name == city ? "active" : "")" asp-controller="Home" asp-action="SetCity"
+           asp-route-name="@name" asp-route-returnUrl="/Cinemas">@name</a>
+    }
+    <select class="a-citysel @(otherSelected ? "active" : "")"
+            onchange="if(this.value){location.href='/Home/SetCity?name='+encodeURIComponent(this.value)+'&returnUrl=/Cinemas';}">
+        <option value="">Tỉnh thành khác</option>
+        @foreach (var c in others)
+        {
+            <option value="@c.Name" selected="@(c.Name == city)">@c.Name</option>
+        }
+    </select>
+</div>
+
+<p class="a-count">@city có <b>@Model.Count</b> rạp</p>
+
+@if (Model.Count == 0)
+{
+    <div class="a-empty">Chưa có rạp tại thành phố này.</div>
+}
+else
+{
+    <div class="a-cgrid">
+        @foreach (var c in Model)
+        {
+            <div class="a-cin">
+                <h3>@c.Name</h3>
+                <div class="l"><span>Địa chỉ</span> @c.Address</div>
+                <div class="l"><span>Hotline</span> @c.Hotline</div>
+                <div>
+                    @foreach (var g in c.Rooms.GroupBy(r => r.Type).OrderBy(g => g.Key))
+                    {
+                        <span class="a-chipseat">@g.Count() × @g.Key</span>
+                    }
+                </div>
+                <div><a href="/Cinemas/Details/@c.Id" class="a-btn" style="padding:8px 18px;font-size:13px">Xem lịch chiếu</a></div>
+            </div>
+        }
+    </div>
+}
