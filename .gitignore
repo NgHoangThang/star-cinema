@@ -486,3 +486,6 @@ $RECYCLE.BIN/
 *.zip
 secrets.json
 wwwroot/uploads/
+
+check.ps1
+check-pay.ps1
